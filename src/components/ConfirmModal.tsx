@@ -18,10 +18,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = 'បញ្ជាក់ការលុប',
+  title = 'តើអ្នកពិតជាចង់លុបមែនឬទេ?',
   message,
-  confirmText = 'បាទ/ចាស លុប',
-  cancelText = 'បោះបង់',
+  confirmText = 'លុប',
+  cancelText = 'ទេ',
   variant = 'danger',
   isDarkMode = false
 }) => {

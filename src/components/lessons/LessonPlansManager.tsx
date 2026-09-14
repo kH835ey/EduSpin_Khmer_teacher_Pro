@@ -398,10 +398,10 @@ export default function LessonPlansManager({
 
   const handleDeletePlan = async (id: string, title: string) => {
     const ok = await confirm({
-      title: 'លុបកិច្ចតែងការ',
-      message: `តើលោកគ្រូ/អ្នកគ្រូពិតជាចង់លុប "${title}" នេះមែនទេ?`,
-      confirmText: 'លុបចេញ',
-      cancelText: 'បោះបង់',
+      title: 'តើអ្នកពិតជាចង់លុបមែនឬទេ?',
+      message: `តើអ្នកពិតជាចង់លុបកិច្ចតែងការ "${title}" នេះចេញពីប្រព័ន្ធមែនឬទេ?`,
+      confirmText: 'លុប',
+      cancelText: 'ទេ',
       variant: 'danger'
     });
     if (ok) {

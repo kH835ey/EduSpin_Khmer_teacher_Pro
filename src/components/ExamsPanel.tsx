@@ -26,7 +26,8 @@ import {
   Link as LinkIcon,
   FolderDown,
   Copy,
-  Pin
+  Pin,
+  HelpCircle
 } from 'lucide-react';
 import { formatGoogleDriveImageUrl, DEFAULT_GOOGLE_DRIVE_LOGO_LINK } from '../lib/driveUtils';
 import { removeWhiteBackgroundFromDataUrl } from '../lib/imageUtils';
@@ -123,120 +124,52 @@ interface ExamsPanelProps {
   onSwitchClass?: (classId: string) => void;
 }
 
-const DEFAULT_PHYSICS_QUESTIONS: ExamQuestion[] = [
-  {
-    id: 'ep-p1',
-    text: 'តើរូបមន្តច្បាប់អូម (Ohm\'s Law) សម្រាប់គណនាតង់ស្យុង U ស្មើនឹងគន្លឹះមួយណា?',
-    options: ['U = R × I', 'U = R / I', 'U = I / R', 'U = R + I'],
-    correctIndex: 0,
-    points: 2
-  },
-  {
-    id: 'ep-p2',
-    text: 'តើឯកតារបស់តង់ស្យុងអគ្គិសនី (U) គិតជាអ្វីនៅក្នុងប្រព័ន្ធអន្តរជាតិ (SI)?',
-    options: ['អំពែ (Ampere)', 'អូម (Ohm)', 'វ៉ុល (Volt)', 'វ៉ាត់ (Watt)'],
-    correctIndex: 2,
-    points: 2
-  },
-  {
-    id: 'ep-p3',
-    text: 'តើឯកតារបស់រេស៊ីស្តង់អគ្គិសនី (R) គិតជាអ្វី?',
-    options: ['អំពែ (A)', 'អូម (Ω)', 'វ៉ុល (V)', 'គូឡុំ (C)'],
-    correctIndex: 1,
-    points: 2
-  },
-  {
-    id: 'ep-p4',
-    text: 'បើឧបករណ៍អគ្គិសនីមួយមានរេស៊ីស្តង់ R = 10Ω ឆ្លងកាត់ដោយចរន្ត I = 2A តើតង់ស្យុង U ស្មើប៉ុន្មាន?',
-    options: ['U = 5 V', 'U = 12 V', 'U = 20 V', 'U = 100 V'],
-    correctIndex: 2,
-    points: 2
-  },
-  {
-    id: 'ep-p5',
-    text: 'បើចរន្តអគ្គិសនី I ឆ្លងកាត់ខ្សែចម្លងមួយកើនឡើងទ្វេដង ខណៈដែលរេស៊ីស្តង់ R នៅថេរ តើតង់ស្យុង U ប្រែប្រួលយ៉ាងណា?',
-    options: ['ថយចុះពាក់កណ្តាល', 'កើនឡើងបួនដង', 'កើនឡើងពីរដង', 'នៅថេរដដែល'],
-    correctIndex: 2,
-    points: 2
-  }
-];
+const DEFAULT_PHYSICS_QUESTIONS: ExamQuestion[] = [];
+const DEFAULT_CHEMISTRY_QUESTIONS: ExamQuestion[] = [];
+const DEFAULT_EXAMS: ExamPaper[] = [];
 
-const DEFAULT_CHEMISTRY_QUESTIONS: ExamQuestion[] = [
-  {
-    id: 'ep-c1',
-    text: 'តើអាស៊ីតខ្លាំងមួយណាដែលមានវត្តមាននៅក្នុងក្រពះមនុស្សសម្រាប់រំលាយអាហារ?',
-    options: ['អាស៊ីតស៊ុលហ្វួរិច (H₂SO₄)', 'អាស៊ីតនីទ្រិច (HNO₃)', 'អាស៊ីតក្លរួអ៊ីដ្រិច (HCl)', 'អាស៊ីតអាសេទិច (CH₃COOH)'],
-    correctIndex: 2,
-    points: 2
-  },
-  {
-    id: 'ep-c2',
-    text: 'តើទឹកបរិសុទ្ធ (Pure Water) មានកម្រិត pH ស្មើនឹងប៉ុន្មាននៅសីតុណ្ហភាព ២៥ អង្សាសេ?',
-    options: ['pH = 0', 'pH = 5', 'pH = 7', 'pH = 14'],
-    correctIndex: 2,
-    points: 2
-  },
-  {
-    id: 'ep-c3',
-    text: 'តើម៉ូលេគុលណាជាផលដែលកើតពីប្រតិកម្មរវាងអាស៊ីត (Acid) និងបាស (Base)?',
-    options: ['អុកស៊ីសែន និងអ៊ីដ្រូសែន', 'អំបិល និងទឹក', 'ឧស្ម័នកាបូនិច និងទឹក', 'អាល់កុល'],
-    correctIndex: 1,
-    points: 2
-  },
-  {
-    id: 'ep-c4',
-    text: 'តើនិមិត្តសញ្ញាគីមីរបស់ធាតុដែក (Iron) គឺអ្វី?',
-    options: ['I', 'Ir', 'Fe', 'F'],
-    correctIndex: 2,
-    points: 2
-  },
-  {
-    id: 'ep-c5',
-    text: 'ក្នុងតារាងខួបនៃធាតុគីមី តើធាតុណាដែលមានម៉ាស់អាតូមស្រាលជាងគេបំផុត?',
-    options: ['អុកស៊ីសែន (O)', 'អ៊ីដ្រូសែន (H)', 'ហេល្យូម (He)', 'កាបូន (C)'],
-    correctIndex: 1,
-    points: 2
+// Helper to detect demo questions so they are removed cleanly
+const isDemoQuestion = (q: ExamQuestion): boolean => {
+  if (!q) return false;
+  const demoIds = ['ep-p1', 'ep-p2', 'ep-p3', 'ep-p4', 'ep-p5', 'ep-c1', 'ep-c2', 'ep-c3', 'ep-c4', 'ep-c5'];
+  if (demoIds.includes(q.id)) return true;
+  if (q.id && (q.id.startsWith('ep-p') || q.id.startsWith('ep-c') || q.id.startsWith('demo-'))) return true;
+  if (q.text && (q.text.includes("Ohm's Law") || q.text.includes("ច្បាប់អូម") || q.text.includes("តង់ស្យុង U") || q.text.includes("អាស៊ីតក្លរួអ៊ីដ្រិច"))) {
+    return true;
   }
-];
+  return false;
+};
 
-const DEFAULT_EXAMS: ExamPaper[] = [
-  {
-    id: 'exam-oct',
-    title: 'វិញ្ញាសាខែតុលា',
-    type: 'monthly',
-    schoolName: 'សាលារៀនសុវណ្ណភូមិ',
-    timeLimit: '60 នាទី',
-    examDate: '2026-10-25',
-    createdAt: Date.now() - 2000000,
-    subjects: [
-      { id: 'sub-p', name: 'រូបវិទ្យា', questions: DEFAULT_PHYSICS_QUESTIONS }
-    ]
-  },
-  {
-    id: 'exam-nov',
-    title: 'វិញ្ញាសាខែវិច្ឆិកា',
-    type: 'monthly',
-    schoolName: 'សាលារៀនសុវណ្ណភូមិ',
-    timeLimit: '60 នាទី',
-    examDate: '2026-11-28',
-    createdAt: Date.now() - 1000000,
-    subjects: [
-      { id: 'sub-p', name: 'រូបវិទ្យា', questions: DEFAULT_PHYSICS_QUESTIONS }
-    ]
-  },
-  {
-    id: 'exam-sem1',
-    title: 'វិញ្ញាសាប្រឡងឆមាសទី១',
-    type: 'semester',
-    schoolName: 'សាលារៀនសុវណ្ណភូមិ',
-    timeLimit: '90 នាទី',
-    examDate: '2026-03-12',
-    createdAt: Date.now(),
-    subjects: [
-      { id: 'sub-p', name: 'រូបវិទ្យា', questions: DEFAULT_PHYSICS_QUESTIONS }
-    ]
-  }
-];
+// Purge any demo exams and demo questions from stored array
+const sanitizeExams = (rawExams: ExamPaper[], fallbackSchool: string): ExamPaper[] => {
+  if (!Array.isArray(rawExams)) return [];
+  const demoExamIds = ['exam-oct', 'exam-nov', 'exam-sem1'];
+  
+  return rawExams
+    .filter(e => {
+      if (!e) return false;
+      // If it is a default demo exam with only demo questions
+      if (demoExamIds.includes(e.id)) {
+        const hasCustom = e.subjects?.some(s => s.questions?.some(q => !isDemoQuestion(q)));
+        return !!hasCustom;
+      }
+      return true;
+    })
+    .map(e => ({
+      ...e,
+      schoolName: e.schoolName || fallbackSchool,
+      subjects: (e.subjects || [])
+        .map(s => ({
+          ...s,
+          questions: (s.questions || []).filter(q => !isDemoQuestion(q))
+        }))
+        .filter(s => {
+          // Remove leftover demo subject if it has no questions left
+          if (s.id === 'sub-p' && s.questions.length === 0) return false;
+          return true;
+        })
+    }));
+};
 
 export default function ExamsPanel({ 
   activeClassId, 
@@ -261,30 +194,20 @@ export default function ExamsPanel({
     if (saved) {
       try {
         const parsed: ExamPaper[] = JSON.parse(saved);
-        return parsed.map(e => ({
-          ...e,
-          schoolName: formatSchoolName(e.schoolName),
-          subjects: e.subjects || []
-        }));
+        return sanitizeExams(parsed, defaultSchool);
       } catch (e) {
-        console.error("Failed to parse exams, using defaults", e);
+        console.error("Failed to parse exams", e);
       }
     }
-    return DEFAULT_EXAMS.map(e => ({
-      ...e,
-      schoolName: defaultSchool
-    }));
+    return [];
   });
 
   const [activeMainTab, setActiveMainTab] = useState<'exams' | 'lessons' | 'external'>('exams');
   const [activeType, setActiveType] = useState<'monthly' | 'semester'>('monthly');
-  const [selectedExamId, setSelectedExamId] = useState<string>(() => {
-    const defaultList = DEFAULT_EXAMS.filter(e => e.type === 'monthly');
-    return defaultList.length > 0 ? defaultList[0].id : '';
-  });
+  const [selectedExamId, setSelectedExamId] = useState<string>('');
 
   // Active Subject selector
-  const [activeSubjectId, setActiveSubjectId] = useState<string>('sub-p');
+  const [activeSubjectId, setActiveSubjectId] = useState<string>('');
 
   // Copy exam from another class state
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -448,16 +371,13 @@ export default function ExamsPanel({
     if (saved) {
       try {
         const parsed: ExamPaper[] = JSON.parse(saved);
-        loadedExams = parsed.map(e => ({
-          ...e,
-          schoolName: e.schoolName || defaultSchool
-        }));
+        loadedExams = sanitizeExams(parsed, defaultSchool);
       } catch (e) {
-        console.error("Failed to parse exams, using defaults", e);
-        loadedExams = JSON.parse(JSON.stringify(DEFAULT_EXAMS));
+        console.error("Failed to parse exams", e);
+        loadedExams = [];
       }
     } else {
-      loadedExams = JSON.parse(JSON.stringify(DEFAULT_EXAMS));
+      loadedExams = [];
     }
     setExams(loadedExams);
     
@@ -493,10 +413,7 @@ export default function ExamsPanel({
           }
 
           if (cloudExams && cloudExams.length > 0) {
-            const formatted = cloudExams.map((e: any) => ({
-              ...e,
-              schoolName: e.schoolName || defaultSchool
-            }));
+            const formatted = sanitizeExams(cloudExams, defaultSchool);
             setExams(formatted);
             localStorage.setItem(key, JSON.stringify(formatted));
             const cloudMatched = formatted.filter((e: any) => e.type === activeType);
@@ -678,9 +595,7 @@ Output the response in JSON format.`;
       timeLimit: newTime.trim() || '60 នាទី',
       examDate: newDate,
       createdAt: Date.now(),
-      subjects: [
-        { id: `sub-p-${Date.now()}`, name: 'រូបវិទ្យា', questions: [...DEFAULT_PHYSICS_QUESTIONS] }
-      ]
+      subjects: []
     };
 
     const updated = [newExam, ...exams];
@@ -3345,39 +3260,45 @@ Output the response in JSON format.`;
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {activeExam.subjects.map((sub) => {
-                    const isSelected = sub.id === activeSubjectId;
-                    return (
-                      <div key={sub.id} className="relative flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setActiveSubjectId(sub.id)}
-                          className={`px-4 py-2.5 rounded-2xl font-black font-sans text-xs transition-all border cursor-pointer select-none ${
-                            isSelected
-                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/15'
-                              : isDarkMode
-                                ? 'bg-[#182033] border-indigo-950/80 text-indigo-400 hover:bg-[#1f2942]'
-                                : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'
-                          }`}
-                        >
-                          📚 {sub.name} ({sub.questions.length})
-                        </button>
-                        
-                        {/* Option to delete category */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteSubject(sub.id);
-                          }}
-                          title="លុបមុខវិជ្ជា"
-                          className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow cursor-pointer transition-all border-none z-10 active:scale-90"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
+                  {activeExam.subjects.length === 0 ? (
+                    <div className="w-full py-4 px-5 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-slate-400 text-xs">
+                      មិនទាន់មានមុខវិជ្ជាប្រឡងនៅឡើយទេ សូមចុច «+ បន្ថែមមុខវិជ្ជាប្រឡង» ខាងលើ
+                    </div>
+                  ) : (
+                    activeExam.subjects.map((sub) => {
+                      const isSelected = sub.id === activeSubjectId;
+                      return (
+                        <div key={sub.id} className="relative flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubjectId(sub.id)}
+                            className={`px-4 py-2.5 rounded-2xl font-black font-sans text-xs transition-all border cursor-pointer select-none ${
+                              isSelected
+                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/15'
+                                : isDarkMode
+                                  ? 'bg-[#182033] border-indigo-950/80 text-indigo-400 hover:bg-[#1f2942]'
+                                  : 'bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100'
+                            }`}
+                          >
+                            📚 {sub.name} ({sub.questions.length})
+                          </button>
+                          
+                          {/* Option to delete category */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteSubject(sub.id);
+                            }}
+                            title="លុបមុខវិជ្ជា"
+                            className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow cursor-pointer transition-all border-none z-10 active:scale-90"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -3393,7 +3314,35 @@ Output the response in JSON format.`;
                 </div>
 
                 <div className="space-y-3.5">
-                  {activeSubject?.questions.map((q, idx) => (
+                  {(!activeSubject || activeSubject.questions.length === 0) ? (
+                    <div className="py-10 px-6 text-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800/80 space-y-3">
+                      <HelpCircle className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        {activeSubject ? 'មិនទាន់មានសំណួរនៅក្នុងមុខវិជ្ជានេះនៅឡើយទេ' : 'សូមជ្រើសរើស ឬបន្ថែមមុខវិជ្ជាជាមុនសិន'}
+                      </p>
+                      {activeSubject && (
+                        <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={openQuestionsEditor}
+                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer border-none flex items-center gap-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>បន្ថែមសំណួរដោយដៃ</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsExpertAiModalOpen(true)}
+                            className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer border-none flex items-center gap-1.5"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>បង្កើតដោយ AI</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    activeSubject.questions.map((q, idx) => (
                     <div
                       key={q.id || idx}
                       className={`p-4 rounded-3xl border transition-all duration-300 text-left space-y-3 ${
@@ -3488,7 +3437,7 @@ Output the response in JSON format.`;
                         </p>
                       )}
                     </div>
-                  ))}
+                  )))}
                 </div>
               </div>
 

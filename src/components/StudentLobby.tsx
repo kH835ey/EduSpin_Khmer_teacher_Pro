@@ -3,7 +3,7 @@ import {
   Crown, QrCode, Award, Trophy, Sparkles, Timer, Check, Copy, 
   Plus, Users, CheckCircle, TrendingUp, UserCheck, Volume2, Tv, RefreshCw, Smartphone,
   HelpCircle, AlertCircle, Play, ArrowRight, XCircle, Info, ChevronRight, Pencil, Trash2,
-  GraduationCap, BookOpen, School
+  GraduationCap, BookOpen, School, PenTool
 } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import { db, safeSetDoc, safeDeleteDoc } from '../lib/firebase';
@@ -25,6 +25,7 @@ interface StudentLobbyProps {
   activeCardState: 'answering' | 'revealed';
   setActiveCardState: (state: 'answering' | 'revealed') => void;
   activeSubjectName?: string;
+  onNavigateToSmartNotes?: () => void;
 }
 
 export default function StudentLobby({
@@ -39,7 +40,8 @@ export default function StudentLobby({
   setActiveCardId,
   activeCardState,
   setActiveCardState,
-  activeSubjectName
+  activeSubjectName,
+  onNavigateToSmartNotes
 }: StudentLobbyProps) {
   const { confirmAction } = useConfirm();
   const [copied, setCopied] = useState(false);
@@ -728,6 +730,18 @@ export default function StudentLobby({
                 </p>
               </div>
             </div>
+
+            {onNavigateToSmartNotes && (
+              <button
+                type="button"
+                onClick={onNavigateToSmartNotes}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer transition-all"
+                title="បើក Smart Notes (ក្ដារខៀនសរសេរដៃ)"
+              >
+                <PenTool className="w-4 h-4" />
+                <span className="hidden sm:inline">Smart Notes</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -918,8 +932,20 @@ export default function StudentLobby({
           </div>
         </div>
 
-        {/* Live connections badge */}
-        <div className="flex items-center gap-3">
+        {/* Live connections badge & Smart Notes */}
+        <div className="flex items-center gap-2.5">
+          {onNavigateToSmartNotes && (
+            <button
+              type="button"
+              onClick={onNavigateToSmartNotes}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer transition-all"
+              title="បើក Smart Notes (ក្ដារខៀនសរសេរដៃ)"
+            >
+              <PenTool className="w-3.5 h-3.5" />
+              <span>Smart Notes</span>
+            </button>
+          )}
+
           <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border ${
             isDarkMode 
               ? 'bg-slate-900 border-indigo-950/60 text-slate-400' 

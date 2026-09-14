@@ -25,149 +25,16 @@ interface ExternalDocumentsPanelProps {
   teacher?: TeacherAccount | null;
 }
 
-// Sample preloaded PDF documents
-const INITIAL_PDF_DOCS: ExternalPdfDoc[] = [
-  {
-    id: 'pdf-sample-1',
-    title: 'សៀវភៅពុម្ពរូបវិទ្យា ថ្នាក់ទី៩ ក្រសួងអប់រំ យុវជន និងកីឡា',
-    description: 'សៀវភៅពុម្ពស្តង់ដារក្រសួងសម្រាប់បង្រៀន និងរៀនមុខវិជ្ជារូបវិទ្យាកម្រិតមធ្យមសិក្សាបឋមភូមិ។',
-    subject: 'រូបវិទ្យា',
-    grade: 'ថ្នាក់ទី៩',
-    fileSize: '4.8 MB',
-    fileName: 'Physics_Grade9_MoEYS.pdf',
-    fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    category: 'curriculum',
-    createdAt: Date.now() - 86400000 * 3,
-  },
-  {
-    id: 'pdf-sample-2',
-    title: 'បណ្តុំវិញ្ញាសាប្រឡងឌីប្លូមចាស់ៗ (គណិតវិទ្យា និងរូបវិទ្យា ២០២០-២០២៤)',
-    description: 'វិញ្ញាសាប្រឡងសញ្ញាបត្រមធ្យមសិក្សាបឋមភូមិផ្លូវការ ភ្ជាប់ជាមួយគន្លឹះដោះស្រាយ និងកម្រិតពិន្ទុ។',
-    subject: 'គណិតវិទ្យា',
-    grade: 'ថ្នាក់ទី៩',
-    fileSize: '3.2 MB',
-    fileName: 'Diploma_Past_Exams_Math_Physics.pdf',
-    fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    category: 'exam_past',
-    createdAt: Date.now() - 86400000 * 5,
-  }
-];
+// Preloaded documents (empty by default)
+const INITIAL_PDF_DOCS: ExternalPdfDoc[] = [];
+const INITIAL_POWERPOINT_DOCS: ExternalPowerPointDoc[] = [];
 
-// Sample preloaded PowerPoint presentations with rich slides
-const INITIAL_POWERPOINT_DOCS: ExternalPowerPointDoc[] = [
-  {
-    id: 'pptx-sample-1',
-    title: 'ស្លាយបទបង្ហាញ៖ រូបវិទ្យា - ច្បាប់អគ្គិសនី និងសៀគ្វីអគ្គិសនី',
-    description: 'បទបង្ហាញបែប Visual PowerPoint ជាមួយរូបមន្តអគ្គិសនី ច្បាប់អូម និងគំនូសបំព្រួញសៀគ្វី។',
-    subject: 'រូបវិទ្យា',
-    grade: 'ថ្នាក់ទី៩',
-    slideCount: 4,
-    fileName: 'Physics_Electricity_Ohm_Law.pptx',
-    createdAt: Date.now() - 86400000 * 2,
-    slides: [
-      {
-        id: 's1',
-        slideNumber: 1,
-        title: 'ច្បាប់អគ្គិសនី និងសៀគ្វីអគ្គិសនី',
-        subtitle: 'ជំពូកទី ៣៖ អគ្គិសនី និងដែនម៉ាញ៉េទិច • ថ្នាក់ទី៩',
-        bulletPoints: [
-          'ស្វែងយល់ពីអាំងតង់ស៊ីតេ និងតង់ស្យុងអគ្គិសនី',
-          'ពិសោធន៍ និងផ្ទៀងផ្ទាត់ច្បាប់អូម (Ohm\'s Law)',
-          'គណនាតម្លៃរេស៊ីស្តង់ និងអនុវត្តលំហាត់ជាក់ស្តែង'
-        ],
-        images: [],
-        notes: 'គ្រូណែនាំសិស្សឱ្យយកចិត្តទុកដាក់លើនិយមន័យច្បាប់អូម និងការប្រើប្រាស់ឧបករណ៍វាស់ Amperemeter/Voltmeter'
-      },
-      {
-        id: 's2',
-        slideNumber: 2,
-        title: '១. ច្បាប់អូម (Ohm\'s Law)',
-        subtitle: 'រូបមន្តគ្រឹះនៃចរន្តអគ្គិសនី',
-        bulletPoints: [
-          'អាំងតង់ស៊ីតេចរន្ត I សមាមាត្រនឹងតង់ស្យុង U',
-          'ច្រាសសមាមាត្រនឹងរេស៊ីស្តង់ R នៃអង្គធាតុចម្លង',
-          'រូបមន្ត៖ U = R × I',
-          'ខ្នាតអន្តរជាតិ៖ U គិតជា វ៉ុល (V), I គិតជា អំពែ (A), R គិតជា អូម (Ω)'
-        ],
-        images: [],
-        notes: 'បង្ហាញត្រីកោណរូបមន្ត U / (R * I) ដល់សិស្ស ដើម្បីងាយស្រួលទាញរូបមន្តរក I ឬ R'
-      },
-      {
-        id: 's3',
-        slideNumber: 3,
-        title: '២. ការតរេស៊ីស្តង់ជាស៊េរី និងជាខ្នែង',
-        subtitle: 'ភាពខុសគ្នានៃការតសៀគ្វីទាំងពីរប្រភេទ',
-        bulletPoints: [
-          'តជាស៊េរី៖ I ស្មើគ្នាគ្រប់កន្លែង (I = I1 = I2), U = U1 + U2, Req = R1 + R2',
-          'តជាខ្នែង៖ U ស្មើគ្នា (U = U1 = U2), I = I1 + I2, 1/Req = 1/R1 + 1/R2',
-          'ការអនុវត្តជាក់ស្តែងក្នុងផ្ទះ៖ ប្រើប្រាស់ការតជាខ្នែងដើម្បីសុវត្ថិភាព'
-        ],
-        images: [],
-        notes: 'សួរនាំសិស្សអំពីមូលហេតុដែលឧបករណ៍អគ្គិសនីក្នុងគេហដ្ឋានត្រូវតជាខ្នែង'
-      },
-      {
-        id: 's4',
-        slideNumber: 4,
-        title: '៣. លំហាត់អនុវត្តន៍គំរូ',
-        subtitle: 'អនុវត្តគណនាចរន្ត និងតង់ស្យុងក្នុងសៀគ្វី',
-        bulletPoints: [
-          'ប្រធាន៖ រេស៊ីស្តរមួយមាន R = 10 Ω ភ្ជាប់ទៅតង់ស្យុង U = 12 V',
-          'សំណួរ៖ ចូរគណនាអាំងតង់ស៊ីតេចរន្ត I ដែលឆ្លងកាត់រេស៊ីស្តរ?',
-          'ចម្លើយ៖ តាមរូបមន្ត I = U / R = 12 / 10 = 1.2 A'
-        ],
-        images: [],
-        notes: 'ឱ្យសិស្សឡើងធ្វើលើក្តារខៀន និងបូកពិន្ទុលើកទឹកចិត្ត'
-      }
-    ]
-  },
-  {
-    id: 'pptx-sample-2',
-    title: 'ស្លាយបទបង្ហាញ៖ គណិតវិទ្យា - សមីការដឺក្រេទី២ មានមួយអញ្ញាត',
-    description: 'បទបង្ហាញគណិតវិទ្យា វិធីដោះស្រាយសមីការដោយប្រើរូបមន្តឌីសគ្រីមីណង់ Δ (Delta)។',
-    subject: 'គណិតវិទ្យា',
-    grade: 'ថ្នាក់ទី៩',
-    slideCount: 3,
-    fileName: 'Math_Quadratic_Equations.pptx',
-    createdAt: Date.now() - 86400000 * 4,
-    slides: [
-      {
-        id: 'm1',
-        slideNumber: 1,
-        title: 'សមីការដឺក្រេទី២ មានមួយអញ្ញាត',
-        subtitle: 'ទម្រង់ទូទៅ ax² + bx + c = 0 (a ≠ 0)',
-        bulletPoints: [
-          'ស្វែងយល់ពីមេគុណ a, b, c',
-          'វិធីសាស្រ្តគណនាឌីសគ្រីមីណង់ ដេលតា (Δ = b² - 4ac)',
-          'កំណត់ចំនួនឫសនៃសមីការតាមតម្លៃនៃ Δ'
-        ],
-        images: []
-      },
-      {
-        id: 'm2',
-        slideNumber: 2,
-        title: 'លក្ខខណ្ឌនៃឌីសគ្រីមីណង់ Δ',
-        bulletPoints: [
-          'បើ Δ > 0 ៖ សមីការមានឫសពីរផ្សេងគ្នា x1 = (-b - √Δ)/2a, x2 = (-b + √Δ)/2a',
-          'បើ Δ = 0 ៖ សមីការមានឫសឌុប x1 = x2 = -b / 2a',
-          'បើ Δ < 0 ៖ សមីការគ្មានឫសក្នុងសំណុំចំនួនពិត R ឡើយ'
-        ],
-        images: []
-      },
-      {
-        id: 'm3',
-        slideNumber: 3,
-        title: 'ឧទាហរណ៍ជាក់ស្តែង',
-        bulletPoints: [
-          'ដោះស្រាយសមីការ៖ x² - 5x + 6 = 0',
-          'a = 1, b = -5, c = 6',
-          'Δ = (-5)² - 4(1)(6) = 25 - 24 = 1 > 0',
-          'ឫស៖ x1 = (5 - 1)/2 = 2,  x2 = (5 + 1)/2 = 3'
-        ],
-        images: []
-      }
-    ]
-  }
-];
+const DEMO_EXT_DOC_IDS = new Set([
+  'pdf-sample-1',
+  'pdf-sample-2',
+  'pptx-sample-1',
+  'pptx-sample-2'
+]);
 
 export default function ExternalDocumentsPanel({
   activeClassId,
@@ -177,40 +44,44 @@ export default function ExternalDocumentsPanel({
 }: ExternalDocumentsPanelProps) {
   const [activeSubTab, setActiveSubTab] = useState<'pdf' | 'powerpoint'>('pdf');
   const sanitizePdfDocs = (items: ExternalPdfDoc[]): ExternalPdfDoc[] => {
-    return items.map(d => {
-      const storageKey = d.fileStorageId || d.id;
-      if (d.fileUrl && d.fileUrl.startsWith('data:')) {
-        saveFileToStorage(storageKey, d.fileUrl).catch(() => {});
+    return items
+      .filter(d => !DEMO_EXT_DOC_IDS.has(d.id))
+      .map(d => {
+        const storageKey = d.fileStorageId || d.id;
+        if (d.fileUrl && d.fileUrl.startsWith('data:')) {
+          saveFileToStorage(storageKey, d.fileUrl).catch(() => {});
+          return {
+            ...d,
+            fileStorageId: storageKey,
+            fileUrl: '',
+          };
+        }
         return {
           ...d,
           fileStorageId: storageKey,
-          fileUrl: '',
+          fileUrl: d.fileUrl || '',
         };
-      }
-      return {
-        ...d,
-        fileStorageId: storageKey,
-        fileUrl: d.fileUrl || '',
-      };
-    });
+      });
   };
 
   const sanitizePptxDocs = (items: ExternalPowerPointDoc[]): ExternalPowerPointDoc[] => {
-    return items.map(d => {
-      const storageKey = d.fileStorageId || d.id;
-      if (d.fileUrl && d.fileUrl.startsWith('data:')) {
-        saveFileToStorage(storageKey, d.fileUrl).catch(() => {});
-      }
-      return {
-        ...d,
-        fileStorageId: storageKey,
-        fileUrl: d.fileUrl && d.fileUrl.startsWith('data:') ? '' : d.fileUrl,
-        slides: (d.slides || []).map(s => ({
-          ...s,
-          images: (s.images || []).filter((img: string) => typeof img === 'string' && !img.startsWith('data:'))
-        }))
-      };
-    });
+    return items
+      .filter(d => !DEMO_EXT_DOC_IDS.has(d.id))
+      .map(d => {
+        const storageKey = d.fileStorageId || d.id;
+        if (d.fileUrl && d.fileUrl.startsWith('data:')) {
+          saveFileToStorage(storageKey, d.fileUrl).catch(() => {});
+        }
+        return {
+          ...d,
+          fileStorageId: storageKey,
+          fileUrl: d.fileUrl && d.fileUrl.startsWith('data:') ? '' : d.fileUrl,
+          slides: (d.slides || []).map(s => ({
+            ...s,
+            images: (s.images || []).filter((img: string) => typeof img === 'string' && !img.startsWith('data:'))
+          }))
+        };
+      });
   };
 
   const teacherId = teacher?.id || 'default_teacher';
@@ -244,8 +115,12 @@ export default function ExternalDocumentsPanel({
       const savedPdf = localStorage.getItem(pdfStorageKey) || localStorage.getItem(`ext_pdf_${activeClassId}`);
       const savedPptx = localStorage.getItem(pptxStorageKey) || localStorage.getItem(`ext_pptx_${activeClassId}`);
       if (isSubscribed) {
-        setPdfDocs(savedPdf ? sanitizePdfDocs(JSON.parse(savedPdf)) : INITIAL_PDF_DOCS);
-        setPptxDocs(savedPptx ? sanitizePptxDocs(JSON.parse(savedPptx)) : INITIAL_POWERPOINT_DOCS);
+        const cleanPdf = savedPdf ? sanitizePdfDocs(JSON.parse(savedPdf)) : INITIAL_PDF_DOCS;
+        const cleanPptx = savedPptx ? sanitizePptxDocs(JSON.parse(savedPptx)) : INITIAL_POWERPOINT_DOCS;
+        setPdfDocs(cleanPdf);
+        setPptxDocs(cleanPptx);
+        localStorage.setItem(pdfStorageKey, JSON.stringify(cleanPdf));
+        localStorage.setItem(pptxStorageKey, JSON.stringify(cleanPptx));
       }
     } catch {}
 
@@ -265,7 +140,7 @@ export default function ExternalDocumentsPanel({
 
         if (isSubscribed && pdfSnap && pdfSnap.exists && pdfSnap.exists()) {
           const data = pdfSnap.data();
-          if (data && Array.isArray(data.docs) && data.docs.length > 0) {
+          if (data && Array.isArray(data.docs)) {
             const sanitized = sanitizePdfDocs(data.docs);
             setPdfDocs(sanitized);
             try {
@@ -284,7 +159,7 @@ export default function ExternalDocumentsPanel({
 
         if (isSubscribed && pptxSnap && pptxSnap.exists && pptxSnap.exists()) {
           const data = pptxSnap.data();
-          if (data && Array.isArray(data.docs) && data.docs.length > 0) {
+          if (data && Array.isArray(data.docs)) {
             const sanitized = sanitizePptxDocs(data.docs);
             setPptxDocs(sanitized);
             try {

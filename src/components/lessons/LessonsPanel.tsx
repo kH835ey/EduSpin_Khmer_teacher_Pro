@@ -13,7 +13,7 @@ import WordDocsManager from './WordDocsManager';
 import SlidesManager from './SlidesManager';
 import LessonPlansManager from './LessonPlansManager';
 import { WordDocItem, SlideDeckItem, LessonPlanItem } from '../../types/lessonMaterials';
-import { DEFAULT_WORD_DOCS, DEFAULT_SLIDES, DEFAULT_LESSON_PLANS } from '../../lib/defaultLessonMaterials';
+import { DEFAULT_WORD_DOCS, DEFAULT_SLIDES, DEFAULT_LESSON_PLANS, DEMO_SAMPLE_IDS } from '../../lib/defaultLessonMaterials';
 import { db, doc, setDoc, safeGetDoc } from '../../lib/firebase';
 import { TeacherAccount } from '../../types';
 
@@ -38,11 +38,15 @@ export default function LessonsPanel({
   const teacherId = teacher?.id || 'default_teacher';
   const storageKey = `khmer_lesson_materials_${teacherId}_${activeClassId || 'general'}`;
 
+  const filterDemo = <T extends { id: string }>(items: T[]): T[] => {
+    return items.filter(item => !DEMO_SAMPLE_IDS.has(item.id));
+  };
+
   // Data states
   const [wordDocs, setWordDocs] = useState<WordDocItem[]>(() => {
     try {
       const cached = localStorage.getItem(`${storageKey}_words`);
-      if (cached) return JSON.parse(cached);
+      if (cached) return filterDemo(JSON.parse(cached));
     } catch {}
     return DEFAULT_WORD_DOCS;
   });
@@ -50,7 +54,7 @@ export default function LessonsPanel({
   const [slides, setSlides] = useState<SlideDeckItem[]>(() => {
     try {
       const cached = localStorage.getItem(`${storageKey}_slides`);
-      if (cached) return JSON.parse(cached);
+      if (cached) return filterDemo(JSON.parse(cached));
     } catch {}
     return DEFAULT_SLIDES;
   });
@@ -58,7 +62,7 @@ export default function LessonsPanel({
   const [lessonPlans, setLessonPlans] = useState<LessonPlanItem[]>(() => {
     try {
       const cached = localStorage.getItem(`${storageKey}_plans`);
-      if (cached) return JSON.parse(cached);
+      if (cached) return filterDemo(JSON.parse(cached));
     } catch {}
     return DEFAULT_LESSON_PLANS;
   });
@@ -73,9 +77,15 @@ export default function LessonsPanel({
       const cachedSlides = localStorage.getItem(`${storageKey}_slides`);
       const cachedPlans = localStorage.getItem(`${storageKey}_plans`);
       if (isMounted) {
-        setWordDocs(cachedWords ? JSON.parse(cachedWords) : DEFAULT_WORD_DOCS);
-        setSlides(cachedSlides ? JSON.parse(cachedSlides) : DEFAULT_SLIDES);
-        setLessonPlans(cachedPlans ? JSON.parse(cachedPlans) : DEFAULT_LESSON_PLANS);
+        const cleanWords = cachedWords ? filterDemo(JSON.parse(cachedWords)) : DEFAULT_WORD_DOCS;
+        const cleanSlides = cachedSlides ? filterDemo(JSON.parse(cachedSlides)) : DEFAULT_SLIDES;
+        const cleanPlans = cachedPlans ? filterDemo(JSON.parse(cachedPlans)) : DEFAULT_LESSON_PLANS;
+        setWordDocs(cleanWords);
+        setSlides(cleanSlides);
+        setLessonPlans(cleanPlans);
+        localStorage.setItem(`${storageKey}_words`, JSON.stringify(cleanWords));
+        localStorage.setItem(`${storageKey}_slides`, JSON.stringify(cleanSlides));
+        localStorage.setItem(`${storageKey}_plans`, JSON.stringify(cleanPlans));
       }
     } catch {}
 
@@ -89,16 +99,19 @@ export default function LessonsPanel({
         if (snap.exists && snap.exists() && isMounted) {
           const data = snap.data();
           if (data.wordDocs && Array.isArray(data.wordDocs)) {
-            setWordDocs(data.wordDocs);
-            localStorage.setItem(`${storageKey}_words`, JSON.stringify(data.wordDocs));
+            const cleanWords = filterDemo(data.wordDocs);
+            setWordDocs(cleanWords);
+            localStorage.setItem(`${storageKey}_words`, JSON.stringify(cleanWords));
           }
           if (data.slides && Array.isArray(data.slides)) {
-            setSlides(data.slides);
-            localStorage.setItem(`${storageKey}_slides`, JSON.stringify(data.slides));
+            const cleanSlides = filterDemo(data.slides);
+            setSlides(cleanSlides);
+            localStorage.setItem(`${storageKey}_slides`, JSON.stringify(cleanSlides));
           }
           if (data.lessonPlans && Array.isArray(data.lessonPlans)) {
-            setLessonPlans(data.lessonPlans);
-            localStorage.setItem(`${storageKey}_plans`, JSON.stringify(data.lessonPlans));
+            const cleanPlans = filterDemo(data.lessonPlans);
+            setLessonPlans(cleanPlans);
+            localStorage.setItem(`${storageKey}_plans`, JSON.stringify(cleanPlans));
           }
         }
       } catch (err) {

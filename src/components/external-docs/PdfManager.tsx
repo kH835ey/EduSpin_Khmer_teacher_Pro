@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ExternalPdfDoc } from '../../types/externalDocs';
 import VisualPdfViewer from './VisualPdfViewer';
-import { saveFileToStorage } from '../../lib/fileStorage';
+import { saveFileToStorage, deleteFileFromStorage } from '../../lib/fileStorage';
 
 interface PdfManagerProps {
   docs: ExternalPdfDoc[];
@@ -37,6 +37,7 @@ export default function PdfManager({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [activeViewingDoc, setActiveViewingDoc] = useState<ExternalPdfDoc | null>(null);
+  const [docToDelete, setDocToDelete] = useState<{ id: string; title: string; storageId?: string } | null>(null);
 
   // Form State for Upload
   const [formTitle, setFormTitle] = useState('');
@@ -146,10 +147,24 @@ export default function PdfManager({
     setErrorMsg(null);
   };
 
-  const handleDeleteDoc = (id: string, title: string) => {
-    if (window.confirm(`តើអ្នកពិតជាចង់លុបឯកសារ "${title}" មែនទេ?`)) {
-      onSaveDocs(docs.filter(d => d.id !== id));
+  const handleDeleteDoc = (docItem: ExternalPdfDoc) => {
+    setDocToDelete({
+      id: docItem.id,
+      title: docItem.title,
+      storageId: docItem.fileStorageId || docItem.id,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!docToDelete) return;
+    const targetId = docToDelete.id;
+    const targetStorageId = docToDelete.storageId || targetId;
+    onSaveDocs(docs.filter(d => d.id !== targetId));
+    deleteFileFromStorage(targetStorageId).catch(() => {});
+    if (activeViewingDoc?.id === targetId) {
+      setActiveViewingDoc(null);
     }
+    setDocToDelete(null);
   };
 
   // Filtered docs
@@ -270,7 +285,11 @@ export default function PdfManager({
                     )}
                   </div>
                   <button
-                    onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteDoc(doc);
+                    }}
                     title="លុបឯកសារ"
                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
                   >
@@ -534,6 +553,83 @@ export default function PdfManager({
           onClose={() => setActiveViewingDoc(null)}
           isDarkMode={isDarkMode}
         />
+      )}
+
+      {/* DELETE CONFIRMATION DIALOG */}
+      {docToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs"
+          onClick={() => setDocToDelete(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.16 }}
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${
+              isDarkMode 
+                ? 'bg-slate-900 border-slate-800 text-slate-100' 
+                : 'bg-white border-slate-100 text-slate-900'
+            }`}
+          >
+            {/* Close X */}
+            <button
+              type="button"
+              onClick={() => setDocToDelete(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border-none bg-transparent"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header with Icon */}
+            <div className="flex items-start gap-3.5 mb-3">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="pt-0.5">
+                <h3 className="text-base font-black tracking-tight leading-snug">
+                  តើអ្នកពិតជាចង់លុបមែនឬទេ?
+                </h3>
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
+                  ការបញ្ជាក់ដើម្បីសុវត្ថិភាពទិន្នន័យ
+                </p>
+              </div>
+            </div>
+
+            {/* Message Body */}
+            <div className={`p-3.5 rounded-2xl mb-5 text-xs leading-relaxed border ${
+              isDarkMode 
+                ? 'bg-slate-950/60 border-slate-800/80 text-slate-300' 
+                : 'bg-slate-50 border-slate-100 text-slate-600'
+            }`}>
+              តើអ្នកពិតជាចង់លុបឯកសារ <span className="font-bold text-red-600 dark:text-red-400">"{docToDelete.title}"</span> នេះចេញពីប្រព័ន្ធមែនឬទេ?
+            </div>
+
+            {/* Actions: ទេ vs លុប */}
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDocToDelete(null)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  isDarkMode 
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+              >
+                ទេ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 shadow-lg bg-red-600 hover:bg-red-700 text-white shadow-red-500/25 flex items-center gap-1.5 border-none"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>លុប</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

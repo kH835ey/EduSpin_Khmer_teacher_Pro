@@ -160,10 +160,10 @@ export default function WordDocsManager({
 
   const handleDeleteDoc = async (id: string, title: string) => {
     const ok = await confirm({
-      title: 'លុបឯកសារ Word',
-      message: `តើលោកគ្រូ/អ្នកគ្រូពិតជាចង់លុបឯកសារ "${title}" នេះមែនទេ?`,
-      confirmText: 'លុបចេញ',
-      cancelText: 'បោះបង់',
+      title: 'តើអ្នកពិតជាចង់លុបមែនឬទេ?',
+      message: `តើអ្នកពិតជាចង់លុបឯកសារ "${title}" នេះចេញពីប្រព័ន្ធមែនឬទេ?`,
+      confirmText: 'លុប',
+      cancelText: 'ទេ',
       variant: 'danger'
     });
     if (ok) {

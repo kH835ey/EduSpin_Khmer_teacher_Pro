@@ -24,6 +24,8 @@ import ExamsPanel from './components/ExamsPanel';
 import SovannaphumiLogo from './components/SovannaphumiLogo';
 import { useConfirm } from './context/ConfirmContext.tsx';
 import { ClassModal } from './components/ClassModal';
+import SmartNotesApp from './components/smart-notes/SmartNotesApp';
+import { BookOpen } from 'lucide-react';
 
 const EMOJIS = ["🥰", "😂", "😩", "🥳", "🥺", "😇", "😎", "🤩", "🤔", "🤗", "🤭", "🫠", "😤", "😮💨", "🫡", "😬", "🙄", "🤒", "😵💫", "😳", "🤪", "😜", "🤫", "🫣", "☹️", "😕"];
 
@@ -104,7 +106,7 @@ export default function App() {
 
   const { confirmAction } = useConfirm();
 
-  const [activeTab, setActiveTab] = useState<'wheel' | 'quiz' | 'groups' | 'stopwatch' | 'students' | 'student-lobby' | 'exams-room'>('wheel');
+  const [activeTab, setActiveTab] = useState<'wheel' | 'quiz' | 'groups' | 'stopwatch' | 'students' | 'student-lobby' | 'exams-room' | 'smart-notes'>('wheel');
   const [showWheelBulk, setShowWheelBulk] = useState(false);
   const [quizLeftView, setQuizLeftView] = useState<'wheel' | 'list'>('wheel');
   const [loadingCloudData, setLoadingCloudData] = useState(false);
@@ -3087,6 +3089,7 @@ export default function App() {
             activeCardState={activeCardState}
             setActiveCardState={setActiveCardState}
             activeSubjectName={subjects.find(s => s.id === activeSubjectId)?.name}
+            onNavigateToSmartNotes={() => setActiveTab('smart-notes')}
           />
         )}
 
@@ -3100,6 +3103,12 @@ export default function App() {
               classes={classes}
               onSwitchClass={handleSwitchClass}
             />
+          </div>
+        )}
+
+        {activeTab === 'smart-notes' && (
+          <div className="flex-1 h-full overflow-hidden">
+            <SmartNotesApp isDarkMode={isDarkMode} />
           </div>
         )}
       </main>
