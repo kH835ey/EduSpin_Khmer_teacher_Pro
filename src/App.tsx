@@ -3064,6 +3064,7 @@ export default function App() {
               classes={classes}
               activeClassId={activeClassId}
               isDarkMode={isDarkMode}
+              teacher={teacher}
               onAddStudentDetail={addStudentDetail}
               onRemoveStudent={removeStudent}
               onClearStudents={clearStudents}

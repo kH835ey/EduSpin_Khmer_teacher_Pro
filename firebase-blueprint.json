@@ -75,6 +75,19 @@
         "updatedAt": { "type": "number" }
       },
       "required": ["classId", "docs"]
+    },
+    "AttendanceData": {
+      "title": "AttendanceData",
+      "description": "Daily attendance status and reasons for students in a class",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "date": { "type": "string" },
+        "records": { "type": "object" },
+        "reasons": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "date", "records"]
     }
   },
   "firestore": {
@@ -101,6 +114,10 @@
     "/teachers/{teacherId}/classes/{classId}/examsData/{docId}": {
       "schema": "ExamsData",
       "description": "Exams papers data for a class."
+    },
+    "/teachers/{teacherId}/classes/{classId}/attendance/{date}": {
+      "schema": "AttendanceData",
+      "description": "Daily attendance records and notes for students in a class."
     }
   }
 }

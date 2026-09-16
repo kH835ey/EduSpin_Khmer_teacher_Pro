@@ -6,19 +6,21 @@ import {
   UserCheck, Trophy, Medal, Star, Flame, ArrowUpDown, RotateCcw, CheckCircle2, ChevronUp, ChevronDown,
   Camera, ArrowUpAZ, Hash, UserX, Clock, FileText, Share2
 } from 'lucide-react';
-import { Student, ClassInfo } from '../types';
+import { Student, ClassInfo, TeacherAccount } from '../types';
 import * as XLSX from 'xlsx';
 import { StudentQuickEditModal } from './StudentQuickEditModal';
 import { StudentScoreTable, SortMode } from './StudentScoreTable';
 import { StudentProfileModal } from './StudentProfileModal';
 import { GenderBadgePicker } from './GenderBadgePicker';
 import { AttendanceCategoryViews } from './AttendanceCategoryViews';
+import { db, doc, collection, safeSetDoc, safeOnSnapshot } from '../lib/firebase';
 
 interface StudentManagerProps {
   students: Student[];
   classes: ClassInfo[];
   activeClassId: string;
   isDarkMode?: boolean;
+  teacher?: TeacherAccount | null;
   onAddStudentDetail: (fields: { name: string; gender: 'ប្រុស' | 'ស្រី'; status: 'ឆ្នើម' | 'សកម្ម' | 'កំពុងរីកចម្រើន' | 'គួរឲ្យបារម្ភ'; classId: string; studentId?: string }) => void;
   onRemoveStudent: (id: string) => void;
   onClearStudents?: () => void;
@@ -33,6 +35,7 @@ export default function StudentManager({
   classes,
   activeClassId,
   isDarkMode = false,
+  teacher,
   onAddStudentDetail,
   onRemoveStudent,
   onClearStudents,
@@ -43,6 +46,16 @@ export default function StudentManager({
 }: StudentManagerProps) {
   // Main Sub-Tab: 'status' (ស្ថានភាពសិស្ស) | 'score' (ពិន្ទុសិស្ស) | 'attendance' (វត្តមានសិស្ស)
   const [activeSubTab, setActiveSubTab] = useState<'status' | 'score' | 'attendance'>('status');
+
+  const effectiveTeacher = useMemo<TeacherAccount | null>(() => {
+    if (teacher) return teacher;
+    try {
+      const saved = localStorage.getItem('logged_in_teacher');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }, [teacher]);
 
   const handleExportAttendanceExcel = () => {
     const classObj = classes.find(c => c.id === currentClassIdForAttendance);
@@ -100,6 +113,7 @@ export default function StudentManager({
   const [attendanceViewTab, setAttendanceViewTab] = useState<'all' | 'permission_absent' | 'absent' | 'late' | 'permission' | 'summary'>('all');
   const [droppedUpdateTick, setDroppedUpdateTick] = useState<number>(0);
 
+  // 1. Initial hydration from local storage
   useEffect(() => {
     const saved = localStorage.getItem('edu_spin_attendance_records');
     if (saved) {
@@ -119,6 +133,107 @@ export default function StudentManager({
     }
   }, []);
 
+  const currentClassIdForAttendance = filterClassId !== 'all' ? filterClassId : (classes[0]?.id || 'default');
+  const classAttendanceKey = `${currentClassIdForAttendance}_${attendanceDate}`;
+  const currentClassAttendance = attendanceMap[classAttendanceKey] || {};
+  const currentClassReasons = attendanceReasonMap[classAttendanceKey] || {};
+
+  // 2. Real-time Firestore sync across all devices / tabs
+  useEffect(() => {
+    if (!effectiveTeacher?.id || !currentClassIdForAttendance || currentClassIdForAttendance === 'default') return;
+
+    const attendanceCollRef = collection(
+      db,
+      'teachers',
+      effectiveTeacher.id,
+      'classes',
+      currentClassIdForAttendance,
+      'attendance'
+    );
+
+    const unsubscribe = safeOnSnapshot(attendanceCollRef, (snapshot: any) => {
+      if (!snapshot || snapshot.empty) return;
+
+      setAttendanceMap(prevMap => {
+        let changed = false;
+        const updatedMap = { ...prevMap };
+
+        snapshot.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          const dateKey = docSnap.id;
+          const classKey = `${currentClassIdForAttendance}_${dateKey}`;
+          if (data && data.records) {
+            const existing = updatedMap[classKey] || {};
+            const incoming = data.records;
+            let recordsDiff = false;
+            for (const k of Object.keys(incoming)) {
+              if (existing[k] !== incoming[k]) {
+                recordsDiff = true;
+                break;
+              }
+            }
+            if (recordsDiff || Object.keys(incoming).length !== Object.keys(existing).length) {
+              updatedMap[classKey] = {
+                ...existing,
+                ...incoming
+              };
+              changed = true;
+            }
+          }
+        });
+
+        if (changed) {
+          localStorage.setItem('edu_spin_attendance_records', JSON.stringify(updatedMap));
+          return updatedMap;
+        }
+        return prevMap;
+      });
+
+      setAttendanceReasonMap(prevReasonMap => {
+        let changed = false;
+        const updatedReasonMap = { ...prevReasonMap };
+
+        snapshot.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          const dateKey = docSnap.id;
+          const classKey = `${currentClassIdForAttendance}_${dateKey}`;
+          if (data && data.reasons) {
+            const existing = updatedReasonMap[classKey] || {};
+            const incoming = data.reasons;
+            let reasonsDiff = false;
+            for (const k of Object.keys(incoming)) {
+              if (existing[k] !== incoming[k]) {
+                reasonsDiff = true;
+                break;
+              }
+            }
+            if (reasonsDiff || Object.keys(incoming).length !== Object.keys(existing).length) {
+              updatedReasonMap[classKey] = {
+                ...existing,
+                ...incoming
+              };
+              changed = true;
+            }
+          }
+        });
+
+        if (changed) {
+          localStorage.setItem('edu_spin_attendance_reasons', JSON.stringify(updatedReasonMap));
+          return updatedReasonMap;
+        }
+        return prevReasonMap;
+      });
+    }, (err: any) => {
+      console.warn('Attendance live sync note:', err);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [effectiveTeacher?.id, currentClassIdForAttendance]);
+
   const saveAttendanceMap = (newMap: typeof attendanceMap) => {
     setAttendanceMap(newMap);
     localStorage.setItem('edu_spin_attendance_records', JSON.stringify(newMap));
@@ -129,10 +244,33 @@ export default function StudentManager({
     localStorage.setItem('edu_spin_attendance_reasons', JSON.stringify(newMap));
   };
 
-  const currentClassIdForAttendance = filterClassId !== 'all' ? filterClassId : (classes[0]?.id || 'default');
-  const classAttendanceKey = `${currentClassIdForAttendance}_${attendanceDate}`;
-  const currentClassAttendance = attendanceMap[classAttendanceKey] || {};
-  const currentClassReasons = attendanceReasonMap[classAttendanceKey] || {};
+  const syncAttendanceDocToCloud = async (
+    targetRecords = currentClassAttendance,
+    targetReasons = currentClassReasons
+  ) => {
+    if (effectiveTeacher?.id && currentClassIdForAttendance && currentClassIdForAttendance !== 'default') {
+      try {
+        const attDocRef = doc(
+          db,
+          'teachers',
+          effectiveTeacher.id,
+          'classes',
+          currentClassIdForAttendance,
+          'attendance',
+          attendanceDate
+        );
+        await safeSetDoc(attDocRef, {
+          classId: currentClassIdForAttendance,
+          date: attendanceDate,
+          records: targetRecords,
+          reasons: targetReasons,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to sync attendance to cloud:', err);
+      }
+    }
+  };
 
   const handleSetStudentAttendance = (studentId: string, status: 'present' | 'absent' | 'permission' | 'late') => {
     const updatedClassAttendance = {
@@ -144,6 +282,7 @@ export default function StudentManager({
       [classAttendanceKey]: updatedClassAttendance
     };
     saveAttendanceMap(newMap);
+    syncAttendanceDocToCloud(updatedClassAttendance, currentClassReasons);
   };
 
   const handleSetStudentReason = (studentId: string, reason: string) => {
@@ -156,6 +295,7 @@ export default function StudentManager({
       [classAttendanceKey]: updatedClassReasons
     };
     saveAttendanceReasonMap(newReasonMap);
+    syncAttendanceDocToCloud(currentClassAttendance, updatedClassReasons);
   };
 
   const handleMarkAllAttendance = (status: 'present' | 'absent' | 'permission' | 'late') => {
@@ -169,6 +309,7 @@ export default function StudentManager({
       [classAttendanceKey]: updatedClassAttendance
     };
     saveAttendanceMap(newMap);
+    syncAttendanceDocToCloud(updatedClassAttendance, currentClassReasons);
   };
 
   // Single student form toggle & states
