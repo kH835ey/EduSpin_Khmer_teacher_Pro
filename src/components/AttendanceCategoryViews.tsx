@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Copy, Check, UserX, Clock, FileText, Share2, 
   ArrowLeft, Users, RotateCcw
@@ -57,11 +57,13 @@ interface AttendanceCategoryViewsProps {
   currentClassReasons: Record<string, string>;
   attendanceDate: string;
   className: string;
+  classId?: string;
   activeCategory: AttendanceCategoryType;
   onBackToAll: () => void;
   onSetAttendance: (studentId: string, status: 'present' | 'absent' | 'permission' | 'late') => void;
   onSetReason: (studentId: string, reason: string) => void;
   isDarkMode?: boolean;
+  onCountsChange?: () => void;
 }
 
 export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = ({
@@ -70,11 +72,13 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
   currentClassReasons,
   attendanceDate,
   className,
+  classId,
   activeCategory,
   onBackToAll,
   onSetAttendance,
   onSetReason,
   isDarkMode = false,
+  onCountsChange,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [useKhmerNumerals, setUseKhmerNumerals] = useState<boolean>(true);
@@ -96,18 +100,41 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
     s => s.notes && (s.notes.includes('សិស្សចេញ') || s.notes.includes('ចេញ') || s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
   ).length;
 
-  const classKey = className ? className.trim() : 'default';
+  const classKey = (className && className !== 'ថ្នាក់រៀន') ? className.trim() : (classId || 'default');
   const storageKey = `attendance_class_counts_${classKey}`;
+  const idStorageKey = classId ? `attendance_class_counts_${classId}` : '';
 
-  const [customCounts, setCustomCounts] = useState<{ old?: number; new?: number; dropped?: number }>(() => {
+  const loadCountsForClass = () => {
     try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
+      if (storageKey) {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) return JSON.parse(saved);
+      }
+      if (idStorageKey) {
+        const saved = localStorage.getItem(idStorageKey);
+        if (saved) return JSON.parse(saved);
+      }
     } catch {
       // Ignore
     }
     return {};
-  });
+  };
+
+  const [customCounts, setCustomCounts] = useState<{ old?: number; new?: number; dropped?: number }>(loadCountsForClass);
+
+  // Reload counts whenever class changes
+  useEffect(() => {
+    setCustomCounts(loadCountsForClass());
+  }, [storageKey, idStorageKey]);
+
+  // Sync when counts are updated anywhere (e.g. top summary card or another view)
+  useEffect(() => {
+    const handleCountUpdate = () => {
+      setCustomCounts(loadCountsForClass());
+    };
+    window.addEventListener('class_counts_updated', handleCountUpdate);
+    return () => window.removeEventListener('class_counts_updated', handleCountUpdate);
+  }, [storageKey, idStorageKey]);
 
   const effectiveNewCount = typeof customCounts.new === 'number'
     ? customCounts.new
@@ -117,25 +144,31 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
     ? customCounts.dropped
     : autoDetectedDroppedCount;
 
+  const defaultOld = Math.max(0, totalStudentsCount - effectiveNewCount + effectiveDroppedCount);
+
   const effectiveOldCount = typeof customCounts.old === 'number'
     ? customCounts.old
-    : Math.max(0, totalStudentsCount - effectiveNewCount - effectiveDroppedCount);
+    : defaultOld;
+
+  // សិស្សសរុប = សិស្សចាស់ + សិស្សចូលថ្មី - សិស្សចេញ
+  const effectiveTotalStudentsCount = Math.max(0, effectiveOldCount + effectiveNewCount - effectiveDroppedCount);
 
   const handleUpdateCount = (field: 'old' | 'new' | 'dropped', val: number) => {
     const num = Math.max(0, isNaN(val) ? 0 : val);
-    const updated = { ...customCounts, [field]: num };
-    if (field === 'dropped') {
-      if (typeof customCounts.old !== 'number') {
-        updated.old = Math.max(0, totalStudentsCount - (updated.new || effectiveNewCount) - num);
-      }
-    } else if (field === 'new' && typeof customCounts.old !== 'number') {
-      updated.old = Math.max(0, totalStudentsCount - num - (updated.dropped || effectiveDroppedCount));
-    } else if (field === 'old' && typeof customCounts.new !== 'number') {
-      updated.new = Math.max(0, totalStudentsCount - num - (updated.dropped || effectiveDroppedCount));
-    }
+    const updated = {
+      old: effectiveOldCount,
+      new: effectiveNewCount,
+      dropped: effectiveDroppedCount,
+      ...customCounts,
+      [field]: num,
+    };
     setCustomCounts(updated);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated));
+      const json = JSON.stringify(updated);
+      if (storageKey) localStorage.setItem(storageKey, json);
+      if (idStorageKey) localStorage.setItem(idStorageKey, json);
+      window.dispatchEvent(new Event('class_counts_updated'));
+      onCountsChange?.();
     } catch {
       // Ignore
     }
@@ -144,7 +177,10 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
   const handleResetCounts = () => {
     setCustomCounts({});
     try {
-      localStorage.removeItem(storageKey);
+      if (storageKey) localStorage.removeItem(storageKey);
+      if (idStorageKey) localStorage.removeItem(idStorageKey);
+      window.dispatchEvent(new Event('class_counts_updated'));
+      onCountsChange?.();
     } catch {
       // Ignore
     }
@@ -170,10 +206,10 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
     .filter(s => (currentClassAttendance[s.id] || 'present') === 'late')
     .sort(sortKhmer);
 
-  // Present students: Result after deducting permission, absent, and late students (and dropped/exit students)
-  // សិស្សមករៀន៖ បានពីការគណនាផលដក សរុប - ច្បាប់ - អវត្តមាន - យឺត (- សិស្សចេញ)
-  const combinedAbsenteeCount = permissionStudents.length + absentStudents.length + lateStudents.length;
-  const effectivePresentCount = Math.max(0, totalStudentsCount - effectiveDroppedCount - combinedAbsenteeCount);
+  // Present students: Result after deducting permission and absent students (do NOT deduct dropped/exit students)
+  // សិស្សមករៀន = សិស្សសរុប - ច្បាប់ - អវត្តមាន (អត់ដកនឹងសិស្សចេញទេ)
+  const combinedAbsenteeCount = permissionStudents.length + absentStudents.length;
+  const effectivePresentCount = Math.max(0, effectiveTotalStudentsCount - combinedAbsenteeCount);
 
   const handleCopyText = async (key: string, text: string) => {
     const ok = await copyToClipboard(text);
@@ -249,7 +285,7 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       `${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`,
       `${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
       `${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
-      `${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`,
+      `${prefix}សិស្សសរុប ៖ ${fmt(effectiveTotalStudentsCount)} នាក់`,
       `${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`,
       `${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`,
       `${prefix}ចំនួន${statusLabel}៖ ${fmt(list.length)} នាក់`,
@@ -278,7 +314,7 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       sections.push(`${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`);
       sections.push(`${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`);
       sections.push(`${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`);
-      sections.push(`${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`);
+      sections.push(`${prefix}សិស្សសរុប ៖ ${fmt(effectiveTotalStudentsCount)} នាក់`);
       sections.push(`${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`);
       sections.push(`${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`);
       sections.push(
@@ -340,7 +376,7 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       `${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`,
       `${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
       `${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
-      `${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`,
+      `${prefix}សិស្សសរុប ៖ ${fmt(effectiveTotalStudentsCount)} នាក់`,
       `${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`,
       `${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`,
       `${prefix}អវត្តមានសរុប៖ ${fmt(totalAbsentee)} នាក់ (ច្បាប់: ${fmt(permissionStudents.length)} | អវត្តមាន: ${fmt(absentStudents.length)} | យឺត: ${fmt(lateStudents.length)})`,
@@ -671,7 +707,7 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
             <Users className="w-4 h-4 text-indigo-500 shrink-0" />
             <span className="font-black text-slate-700 dark:text-slate-200">ស្ថិតិសិស្សក្នុងថ្នាក់៖</span>
             <span className="text-slate-500 dark:text-slate-400">
-              សរុប <strong className="text-indigo-600 dark:text-indigo-400">{useKhmerNumerals ? toKhmerNum(totalStudentsCount) : totalStudentsCount}</strong> នាក់ 
+              សរុប <strong className="text-indigo-600 dark:text-indigo-400">{useKhmerNumerals ? toKhmerNum(effectiveTotalStudentsCount) : effectiveTotalStudentsCount}</strong> នាក់ 
               (ស្រី <strong className="text-pink-600 dark:text-pink-400">{useKhmerNumerals ? toKhmerNum(femaleStudentsCount) : femaleStudentsCount}</strong> នាក់)
             </span>
           </div>
@@ -1152,7 +1188,7 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
           <Users className="w-4 h-4 text-indigo-500 shrink-0" />
           <span className="font-black text-slate-700 dark:text-slate-200">ស្ថិតិសិស្សក្នុងថ្នាក់៖</span>
           <span className="text-slate-500 dark:text-slate-400">
-            សរុប <strong className="text-indigo-600 dark:text-indigo-400">{useKhmerNumerals ? toKhmerNum(totalStudentsCount) : totalStudentsCount}</strong> នាក់ 
+            សរុប <strong className="text-indigo-600 dark:text-indigo-400">{useKhmerNumerals ? toKhmerNum(effectiveTotalStudentsCount) : effectiveTotalStudentsCount}</strong> នាក់ 
             (ស្រី <strong className="text-pink-600 dark:text-pink-400">{useKhmerNumerals ? toKhmerNum(femaleStudentsCount) : femaleStudentsCount}</strong> នាក់)
           </span>
         </div>

@@ -6,7 +6,7 @@ import {
   UserCheck, Trophy, Medal, Star, Flame, ArrowUpDown, RotateCcw, CheckCircle2, ChevronUp, ChevronDown,
   Camera, ArrowUpAZ, Hash, UserX, Clock, FileText, Share2
 } from 'lucide-react';
-import { Student, ClassInfo, TeacherAccount } from '../types';
+import { Student, ClassInfo, TeacherAccount, isStudentInClass } from '../types';
 import * as XLSX from 'xlsx';
 import { StudentQuickEditModal } from './StudentQuickEditModal';
 import { StudentScoreTable, SortMode } from './StudentScoreTable';
@@ -133,7 +133,21 @@ export default function StudentManager({
     }
   }, []);
 
-  const currentClassIdForAttendance = filterClassId !== 'all' ? filterClassId : (classes[0]?.id || 'default');
+  // Sync when class counts are updated in other components
+  useEffect(() => {
+    const handleCountUpdate = () => {
+      setDroppedUpdateTick(t => t + 1);
+    };
+    window.addEventListener('class_counts_updated', handleCountUpdate);
+    return () => window.removeEventListener('class_counts_updated', handleCountUpdate);
+  }, []);
+
+  const effectiveClassId = (filterClassId && filterClassId !== 'all') 
+    ? filterClassId 
+    : (activeClassId || classes[0]?.id || 'default');
+  const effectiveClassObj = classes.find(c => c.id === effectiveClassId) || classes.find(c => c.id === activeClassId) || classes[0];
+  const effectiveClassName = effectiveClassObj?.name?.trim() || effectiveClassId || 'ថ្នាក់រៀន';
+  const currentClassIdForAttendance = effectiveClassId;
   const classAttendanceKey = `${currentClassIdForAttendance}_${attendanceDate}`;
   const currentClassAttendance = attendanceMap[classAttendanceKey] || {};
   const currentClassReasons = attendanceReasonMap[classAttendanceKey] || {};
@@ -459,7 +473,9 @@ export default function StudentManager({
     let list = students.filter(student => {
       const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (student.studentId || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesClass = filterClassId === 'all' || (student.classId || activeClassId) === filterClassId;
+      const targetClassId = filterClassId === 'all' ? activeClassId : filterClassId;
+      const targetClassObj = classes.find(c => c.id === targetClassId);
+      const matchesClass = filterClassId === 'all' || isStudentInClass(student, targetClassId, targetClassObj?.name);
       if (!matchesSearch || !matchesClass) return false;
 
       if (activeSubTab === 'score') {
@@ -540,8 +556,9 @@ export default function StudentManager({
     ? (classes.find(c => c.id === activeClassId)?.name || 'ថ្នាក់រៀន')
     : (classes.find(c => c.id === filterClassId)?.name || 'ថ្នាក់រៀន');
   const selectedClassCount = filteredStudents.filter(s => {
-    const cid = s.classId || activeClassId;
-    return filterClassId === 'all' ? cid === activeClassId : cid === filterClassId;
+    const targetClassId = filterClassId === 'all' ? activeClassId : filterClassId;
+    const targetClassObj = classes.find(c => c.id === targetClassId);
+    return isStudentInClass(s, targetClassId, targetClassObj?.name);
   }).length;
 
   // Score Tab Stats
@@ -1423,28 +1440,52 @@ export default function StudentManager({
               s => s.notes && (s.notes.includes('ចេញ') || s.notes.includes('សិស្សចេញ') || s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
             ).length;
 
-            const activeClassObj = classes.find(c => c.id === filterClassId);
-            const classCountKey = `attendance_class_counts_${activeClassObj?.name?.trim() || activeClassObj?.id || 'default'}`;
+            // Auto-detect new students from notes
+            const autoDetectedNew = classStudents.filter(
+              s => s.notes && (s.notes.includes('សិស្សចូលថ្មី') || s.notes.includes('សិស្សថ្មី') || s.notes.includes('ថ្មី'))
+            ).length;
+
+            const classNameKey = effectiveClassName;
+            const classCountKey = `attendance_class_counts_${classNameKey}`;
+            const idCountKey = effectiveClassId ? `attendance_class_counts_${effectiveClassId}` : '';
+            let storedOld: number | undefined;
+            let storedNew: number | undefined;
             let storedDropped: number | undefined;
             try {
-              const saved = localStorage.getItem(classCountKey);
+              const saved = localStorage.getItem(classCountKey) || (idCountKey ? localStorage.getItem(idCountKey) : null);
               if (saved) {
                 const parsed = JSON.parse(saved);
+                if (typeof parsed.old === 'number') storedOld = parsed.old;
+                if (typeof parsed.new === 'number') storedNew = parsed.new;
                 if (typeof parsed.dropped === 'number') storedDropped = parsed.dropped;
               }
             } catch {}
 
             const effectiveDropped = typeof storedDropped === 'number' ? storedDropped : autoDetectedDropped;
-            // សិស្សមករៀន៖ ដោយយកតាមផលដក សរុប-ច្បាប់-អវត្តមាន-យឺត (និងសិស្សចេញ)
-            const combinedAbsentee = permCount + absentCount + lateCount;
-            const attendingCount = Math.max(0, total - effectiveDropped - combinedAbsentee);
+            const effectiveNew = typeof storedNew === 'number' ? storedNew : autoDetectedNew;
+            const effectiveOld = typeof storedOld === 'number' ? storedOld : Math.max(0, total - effectiveNew + effectiveDropped);
+            const effectiveTotal = (typeof storedOld === 'number' || typeof storedNew === 'number' || typeof storedDropped === 'number')
+              ? Math.max(0, effectiveOld + effectiveNew - effectiveDropped)
+              : total;
+
+            // សិស្សមករៀន = សិស្សសរុប - ច្បាប់ - អវត្តមាន (អត់ដកនឹងសិស្សចេញទេ)
+            const combinedAbsentee = permCount + absentCount;
+            const attendingCount = Math.max(0, effectiveTotal - combinedAbsentee);
 
             const handleDroppedChange = (newVal: number) => {
               const val = Math.max(0, isNaN(newVal) ? 0 : newVal);
               try {
-                const existing = JSON.parse(localStorage.getItem(classCountKey) || '{}');
-                existing.dropped = val;
-                localStorage.setItem(classCountKey, JSON.stringify(existing));
+                const existing = JSON.parse(localStorage.getItem(classCountKey) || (idCountKey ? localStorage.getItem(idCountKey) : null) || '{}');
+                const updated = {
+                  old: effectiveOld,
+                  new: effectiveNew,
+                  ...existing,
+                  dropped: val,
+                };
+                const json = JSON.stringify(updated);
+                localStorage.setItem(classCountKey, json);
+                if (idCountKey) localStorage.setItem(idCountKey, json);
+                window.dispatchEvent(new Event('class_counts_updated'));
                 setDroppedUpdateTick(prev => prev + 1);
               } catch {}
             };
@@ -1464,7 +1505,7 @@ export default function StudentManager({
                     title="ចុចដើម្បីមើលតារាងវត្តមានទាំងអស់"
                   >
                     <span className="text-[10px] font-bold text-slate-400 uppercase">សិស្សសរុប</span>
-                    <div className="text-2xl font-black mt-1 text-slate-900 dark:text-white">{total} <span className="text-xs font-normal text-slate-400">នាក់</span></div>
+                    <div className="text-2xl font-black mt-1 text-slate-900 dark:text-white">{effectiveTotal} <span className="text-xs font-normal text-slate-400">នាក់</span></div>
                   </div>
 
                   {/* 2. សិស្សចេញ (មានរបារកំណត់ចំនួនចេញ) */}
@@ -1492,13 +1533,13 @@ export default function StudentManager({
                     </div>
                   </div>
 
-                  {/* 3. សិស្សមករៀន (ដកសិស្សច្បាប់ អវត្តមាន និងយឺតចេញ) */}
+                  {/* 3. សិស្សមករៀន (ដកសិស្សច្បាប់ និងអវត្តមានចេញ - អត់ដកសិស្សចេញ) */}
                   <div 
                     onClick={() => setAttendanceViewTab('all')}
                     className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
                       isDarkMode ? 'bg-emerald-950/25 border-emerald-800/60 hover:border-emerald-600' : 'bg-emerald-50 border-emerald-300 hover:border-emerald-400 shadow-xs'
                     }`}
-                    title="សិស្សមករៀន៖ ដោយយកតាមផលដក សរុប-ច្បាប់-អវត្តមាន-យឺត"
+                    title="សិស្សមករៀន = សិស្សសរុប - ច្បាប់ - អវត្តមាន"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">សិស្សមករៀន</span>
@@ -1823,16 +1864,19 @@ export default function StudentManager({
           </div>
         ) : (
           <AttendanceCategoryViews
+            key={`${effectiveClassId}_${effectiveClassName}`}
             students={filteredStudents}
             currentClassAttendance={currentClassAttendance}
             currentClassReasons={currentClassReasons}
             attendanceDate={attendanceDate}
-            className={classes.find(c => c.id === (filterClassId === 'all' ? activeClassId : filterClassId))?.name || 'ថ្នាក់រៀន'}
+            className={effectiveClassName}
+            classId={effectiveClassId}
             activeCategory={attendanceViewTab}
             onBackToAll={() => setAttendanceViewTab('all')}
             onSetAttendance={handleSetStudentAttendance}
             onSetReason={handleSetStudentReason}
             isDarkMode={isDarkMode}
+            onCountsChange={() => setDroppedUpdateTick(prev => prev + 1)}
           />
         )}
       </div>
@@ -1983,10 +2027,10 @@ export default function StudentManager({
         isOpen={showQuickEditModal}
         onClose={() => setShowQuickEditModal(false)}
         students={students}
-        className={classes.find(c => c.id === (filterClassId === 'all' ? activeClassId : filterClassId))?.name || 'ថ្នាក់រៀន'}
+        className={effectiveClassName}
         isDarkMode={isDarkMode}
         onSave={async (names, mode) => {
-          const targetId = filterClassId === 'all' ? activeClassId : filterClassId;
+          const targetId = effectiveClassId;
           if (onBatchSyncStudents) {
             await onBatchSyncStudents(names, mode, targetId);
           } else {
@@ -2001,7 +2045,7 @@ export default function StudentManager({
         onClose={() => setProfileStudent(null)}
         student={profileStudent}
         classes={classes}
-        activeClassId={filterClassId === 'all' ? activeClassId : filterClassId}
+        activeClassId={effectiveClassId}
         isDarkMode={isDarkMode}
         onSaveStudent={async (id, updatedFields) => {
           if (onUpdateStudentDetail) {

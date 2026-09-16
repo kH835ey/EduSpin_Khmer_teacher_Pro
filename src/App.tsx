@@ -3179,7 +3179,7 @@ export default function App() {
         {activeTab === 'students' && (
           <div className={`flex-1 h-full overflow-y-auto ${isDarkMode ? 'bg-[#0b0f19]' : 'bg-slate-50'}`}>
             <StudentManager
-              students={currentClassStudents}
+              students={students}
               classes={classes}
               activeClassId={activeClassId}
               isDarkMode={isDarkMode}
