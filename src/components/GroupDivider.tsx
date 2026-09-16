@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, Minus, Shuffle, Download, FileSpreadsheet, Award, Check, TrendingUp, Trophy, Loader2, Cloud, ClipboardList, Timer } from 'lucide-react';
 import { Student, TeacherAccount } from '../types';
 import * as XLSX from 'xlsx';
-import { db, handleFirestoreError, OperationType, safeSetDoc, safeGetDoc } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, safeSetDoc, safeGetDoc, safeOnSnapshot } from '../lib/firebase';
 import { doc } from 'firebase/firestore';
 import { StudentQuickEditModal } from './StudentQuickEditModal';
 import StopwatchPanel from './StopwatchPanel';
@@ -82,35 +82,33 @@ export default function GroupDivider({
       }
     }
 
-    // 3. Load from cloud if logged in
-    const loadFromCloud = async () => {
-      if (!teacher || !activeClassId) return;
-      setIsCloudLoading(true);
-      try {
-        const docRef = doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'groupsData', 'current');
-        const docSnap = await safeGetDoc(docRef);
-        if (docSnap && docSnap.exists()) {
-          const data = docSnap.data();
-          if (data && data.groups) {
-            setGroups(data.groups);
-            // Also update localStorage with the latest cloud data
-            localStorage.setItem(localGroupsKey, JSON.stringify(data.groups));
-          }
-          if (data && data.numGroups) {
-            setNumGroups(data.numGroups);
-            localStorage.setItem(localNumGroupsKey, String(data.numGroups));
-          }
-          setCloudSynced(true);
-        }
-      } catch (err) {
-        console.warn('Notice: Operating with local groups data while offline:', err);
-        handleFirestoreError(err, OperationType.GET, `teachers/${teacher.id}/classes/${activeClassId}/groupsData/current`);
-      } finally {
-        setIsCloudLoading(false);
-      }
-    };
+    // 3. Real-Time Cloud Synchronization across devices
+    if (!teacher || !activeClassId) return;
+    setIsCloudLoading(true);
 
-    loadFromCloud();
+    const docRef = doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'groupsData', 'current');
+    const unsubscribe = safeOnSnapshot(docRef, (docSnap: any) => {
+      if (docSnap && docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.groups) {
+          setGroups(data.groups);
+          localStorage.setItem(localGroupsKey, JSON.stringify(data.groups));
+        }
+        if (data && data.numGroups) {
+          setNumGroups(data.numGroups);
+          localStorage.setItem(localNumGroupsKey, String(data.numGroups));
+        }
+        setCloudSynced(true);
+      }
+      setIsCloudLoading(false);
+    }, (err: any) => {
+      console.warn('Notice: Operating with local groups data while offline:', err);
+      setIsCloudLoading(false);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [activeClassId, teacher]);
 
   // Helper to save groups to localstorage and firestore

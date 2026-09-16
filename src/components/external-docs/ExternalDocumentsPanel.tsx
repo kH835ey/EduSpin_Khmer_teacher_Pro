@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ExternalPdfDoc, ExternalPowerPointDoc } from '../../types/externalDocs';
 import PdfManager from './PdfManager';
 import PowerPointManager from './PowerPointManager';
-import { db, safeGetDoc, safeSetDoc } from '../../lib/firebase';
+import { db, safeGetDoc, safeSetDoc, safeOnSnapshot } from '../../lib/firebase';
 import { saveFileToStorage } from '../../lib/fileStorage';
 import { doc } from 'firebase/firestore';
 import { TeacherAccount } from '../../types';
@@ -126,18 +126,16 @@ export default function ExternalDocumentsPanel({
 
     if (!db || !activeClassId) return;
 
-    // 2. Fetch from cloud
-    const fetchCloudDocs = async () => {
-      try {
-        // Try teacher-scoped class path first, then fallback
-        let pdfSnap: any = null;
-        if (teacher?.id) {
-          pdfSnap = await safeGetDoc(doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'externalDocs', 'pdf'));
-        }
-        if (!pdfSnap || !pdfSnap.exists || !pdfSnap.exists()) {
-          pdfSnap = await safeGetDoc(doc(db, 'external_docs', `pdf_${activeClassId}`));
-        }
+    // 2. Real-Time Cloud Synchronization across devices
+    let unsubPdf: (() => void) | null = null;
+    let unsubPptx: (() => void) | null = null;
 
+    try {
+      const pdfDocRef = teacher?.id 
+        ? doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'externalDocs', 'pdf')
+        : doc(db, 'external_docs', `pdf_${activeClassId}`);
+
+      unsubPdf = safeOnSnapshot(pdfDocRef, (pdfSnap: any) => {
         if (isSubscribed && pdfSnap && pdfSnap.exists && pdfSnap.exists()) {
           const data = pdfSnap.data();
           if (data && Array.isArray(data.docs)) {
@@ -148,15 +146,15 @@ export default function ExternalDocumentsPanel({
             } catch {}
           }
         }
+      }, (err: any) => {
+        console.warn('Notice: External PDF docs sync notice:', err);
+      });
 
-        let pptxSnap: any = null;
-        if (teacher?.id) {
-          pptxSnap = await safeGetDoc(doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'externalDocs', 'pptx'));
-        }
-        if (!pptxSnap || !pptxSnap.exists || !pptxSnap.exists()) {
-          pptxSnap = await safeGetDoc(doc(db, 'external_docs', `pptx_${activeClassId}`));
-        }
+      const pptxDocRef = teacher?.id
+        ? doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'externalDocs', 'pptx')
+        : doc(db, 'external_docs', `pptx_${activeClassId}`);
 
+      unsubPptx = safeOnSnapshot(pptxDocRef, (pptxSnap: any) => {
         if (isSubscribed && pptxSnap && pptxSnap.exists && pptxSnap.exists()) {
           const data = pptxSnap.data();
           if (data && Array.isArray(data.docs)) {
@@ -167,15 +165,17 @@ export default function ExternalDocumentsPanel({
             } catch {}
           }
         }
-      } catch (err) {
-        console.warn('Notice: External docs cloud fetch deferred:', err);
-      }
-    };
-
-    fetchCloudDocs();
+      }, (err: any) => {
+        console.warn('Notice: External PPTX docs sync notice:', err);
+      });
+    } catch (err) {
+      console.warn('Notice: External docs cloud snapshot setup deferred:', err);
+    }
 
     return () => {
       isSubscribed = false;
+      if (typeof unsubPdf === 'function') unsubPdf();
+      if (typeof unsubPptx === 'function') unsubPptx();
     };
   }, [activeClassId, teacher?.id, pdfStorageKey, pptxStorageKey]);
 

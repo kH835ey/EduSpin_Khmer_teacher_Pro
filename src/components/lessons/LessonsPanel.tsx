@@ -14,7 +14,7 @@ import SlidesManager from './SlidesManager';
 import LessonPlansManager from './LessonPlansManager';
 import { WordDocItem, SlideDeckItem, LessonPlanItem } from '../../types/lessonMaterials';
 import { DEFAULT_WORD_DOCS, DEFAULT_SLIDES, DEFAULT_LESSON_PLANS, DEMO_SAMPLE_IDS } from '../../lib/defaultLessonMaterials';
-import { db, doc, setDoc, safeGetDoc } from '../../lib/firebase';
+import { db, doc, setDoc, safeGetDoc, safeOnSnapshot } from '../../lib/firebase';
 import { TeacherAccount } from '../../types';
 
 interface LessonsPanelProps {
@@ -89,40 +89,41 @@ export default function LessonsPanel({
       }
     } catch {}
 
-    async function loadCloudMaterials() {
-      if (!teacher?.id || !activeClassId) return;
+    let unsubscribe: (() => void) | null = null;
 
+    if (teacher?.id && activeClassId) {
       try {
         const matDocRef = doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'lessonMaterials', 'data');
-        const snap = await safeGetDoc(matDocRef);
-
-        if (snap.exists && snap.exists() && isMounted) {
-          const data = snap.data();
-          if (data.wordDocs && Array.isArray(data.wordDocs)) {
-            const cleanWords = filterDemo(data.wordDocs);
-            setWordDocs(cleanWords);
-            localStorage.setItem(`${storageKey}_words`, JSON.stringify(cleanWords));
+        unsubscribe = safeOnSnapshot(matDocRef, (snap: any) => {
+          if (snap && snap.exists && snap.exists() && isMounted) {
+            const data = snap.data();
+            if (data.wordDocs && Array.isArray(data.wordDocs)) {
+              const cleanWords = filterDemo(data.wordDocs);
+              setWordDocs(cleanWords);
+              localStorage.setItem(`${storageKey}_words`, JSON.stringify(cleanWords));
+            }
+            if (data.slides && Array.isArray(data.slides)) {
+              const cleanSlides = filterDemo(data.slides);
+              setSlides(cleanSlides);
+              localStorage.setItem(`${storageKey}_slides`, JSON.stringify(cleanSlides));
+            }
+            if (data.lessonPlans && Array.isArray(data.lessonPlans)) {
+              const cleanPlans = filterDemo(data.lessonPlans);
+              setLessonPlans(cleanPlans);
+              localStorage.setItem(`${storageKey}_plans`, JSON.stringify(cleanPlans));
+            }
           }
-          if (data.slides && Array.isArray(data.slides)) {
-            const cleanSlides = filterDemo(data.slides);
-            setSlides(cleanSlides);
-            localStorage.setItem(`${storageKey}_slides`, JSON.stringify(cleanSlides));
-          }
-          if (data.lessonPlans && Array.isArray(data.lessonPlans)) {
-            const cleanPlans = filterDemo(data.lessonPlans);
-            setLessonPlans(cleanPlans);
-            localStorage.setItem(`${storageKey}_plans`, JSON.stringify(cleanPlans));
-          }
-        }
+        }, (err: any) => {
+          console.warn('Notice: Lessons real-time sync notice:', err);
+        });
       } catch (err) {
-        console.warn('Could not fetch cloud lesson materials:', err);
+        console.warn('Could not setup cloud lesson materials real-time listener:', err);
       }
     }
 
-    loadCloudMaterials();
-
     return () => {
       isMounted = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, [teacher?.id, activeClassId, storageKey]);
 

@@ -1418,9 +1418,9 @@ export default function StudentManager({
               else if (status === 'late') lateCount++;
             });
 
-            // Auto-detect dropped count from notes (e.g. "ឈប់" or "បោះបង់")
+            // Auto-detect dropped/exit count from notes (e.g. "ចេញ", "សិស្សចេញ", "ឈប់" or "បោះបង់")
             const autoDetectedDropped = classStudents.filter(
-              s => s.notes && (s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
+              s => s.notes && (s.notes.includes('ចេញ') || s.notes.includes('សិស្សចេញ') || s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
             ).length;
 
             const activeClassObj = classes.find(c => c.id === filterClassId);
@@ -1435,8 +1435,8 @@ export default function StudentManager({
             } catch {}
 
             const effectiveDropped = typeof storedDropped === 'number' ? storedDropped : autoDetectedDropped;
-            // សិស្សមករៀន៖ ដោយយកតាមលទ្ធផលបន្ទាប់ពីដកសិស្សច្បាប់ និងអវត្តមានចេញ (និងសិស្សឈប់)
-            const combinedAbsentee = permCount + absentCount;
+            // សិស្សមករៀន៖ ដោយយកតាមផលដក សរុប-ច្បាប់-អវត្តមាន-យឺត (និងសិស្សចេញ)
+            const combinedAbsentee = permCount + absentCount + lateCount;
             const attendingCount = Math.max(0, total - effectiveDropped - combinedAbsentee);
 
             const handleDroppedChange = (newVal: number) => {
@@ -1467,15 +1467,15 @@ export default function StudentManager({
                     <div className="text-2xl font-black mt-1 text-slate-900 dark:text-white">{total} <span className="text-xs font-normal text-slate-400">នាក់</span></div>
                   </div>
 
-                  {/* 2. សិស្សឈប់ (មានរបារកំណត់ចំនួនឈប់) */}
+                  {/* 2. សិស្សចេញ (មានរបារកំណត់ចំនួនចេញ) */}
                   <div 
                     className={`p-3.5 rounded-2xl border transition-all ${
                       isDarkMode ? 'bg-rose-950/20 border-rose-900/40' : 'bg-rose-50/70 border-rose-200 shadow-xs'
                     }`}
-                    title="របារកំណត់ចំនួនសិស្សឈប់រៀន"
+                    title="របារកំណត់ចំនួនសិស្សចេញ"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase">សិស្សឈប់</span>
+                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase">សិស្សចេញ</span>
                       <span className="text-[9px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.5 rounded-md">កំណត់</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -1486,19 +1486,19 @@ export default function StudentManager({
                         value={effectiveDropped}
                         onChange={(e) => handleDroppedChange(parseInt(e.target.value, 10))}
                         className="w-14 px-1.5 py-0.5 rounded-lg border border-rose-300 dark:border-rose-800 font-black text-xl text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/30"
-                        title="កំណត់ចំនួនសិស្សឈប់"
+                        title="កំណត់ចំនួនសិស្សចេញ"
                       />
                       <span className="text-xs font-bold text-rose-500">នាក់</span>
                     </div>
                   </div>
 
-                  {/* 3. សិស្សមករៀន (ដកសិស្សច្បាប់ និងអវត្តមានចេញ) */}
+                  {/* 3. សិស្សមករៀន (ដកសិស្សច្បាប់ អវត្តមាន និងយឺតចេញ) */}
                   <div 
                     onClick={() => setAttendanceViewTab('all')}
                     className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
                       isDarkMode ? 'bg-emerald-950/25 border-emerald-800/60 hover:border-emerald-600' : 'bg-emerald-50 border-emerald-300 hover:border-emerald-400 shadow-xs'
                     }`}
-                    title="សិស្សមករៀន៖ ដោយយកតាមលទ្ធផលបន្ទាប់ពីដកសិស្សច្បាប់និងអវត្តមានចេញ"
+                    title="សិស្សមករៀន៖ ដោយយកតាមផលដក សរុប-ច្បាប់-អវត្តមាន-យឺត"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">សិស្សមករៀន</span>

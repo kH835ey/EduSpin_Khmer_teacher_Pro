@@ -86,14 +86,14 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
   const totalStudentsCount = students.length;
   const femaleStudentsCount = students.filter(s => s.gender === 'ស្រី').length;
 
-  // Auto-detect new students from notes (if teacher wrote "ថ្មី" or "សិស្សថ្មី")
+  // Auto-detect new students from notes (if teacher wrote "ថ្មី" or "សិស្សថ្មី" or "សិស្សចូលថ្មី")
   const autoDetectedNewCount = students.filter(
-    s => s.notes && (s.notes.includes('សិស្សថ្មី') || s.notes.includes('ថ្មី'))
+    s => s.notes && (s.notes.includes('សិស្សចូលថ្មី') || s.notes.includes('សិស្សថ្មី') || s.notes.includes('ថ្មី'))
   ).length;
 
-  // Auto-detect dropped students from notes (if teacher wrote "ឈប់" or "បោះបង់")
+  // Auto-detect dropped/exit students from notes (if teacher wrote "ចេញ", "សិស្សចេញ", "ឈប់" or "បោះបង់")
   const autoDetectedDroppedCount = students.filter(
-    s => s.notes && (s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
+    s => s.notes && (s.notes.includes('សិស្សចេញ') || s.notes.includes('ចេញ') || s.notes.includes('ឈប់') || s.notes.includes('បោះបង់') || s.notes.includes('ឈប់រៀន'))
   ).length;
 
   const classKey = className ? className.trim() : 'default';
@@ -170,8 +170,9 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
     .filter(s => (currentClassAttendance[s.id] || 'present') === 'late')
     .sort(sortKhmer);
 
-  // Present students: Result after deducting permission and absent students (and dropped students)
-  const combinedAbsenteeCount = permissionStudents.length + absentStudents.length;
+  // Present students: Result after deducting permission, absent, and late students (and dropped/exit students)
+  // សិស្សមករៀន៖ បានពីការគណនាផលដក សរុប - ច្បាប់ - អវត្តមាន - យឺត (- សិស្សចេញ)
+  const combinedAbsenteeCount = permissionStudents.length + absentStudents.length + lateStudents.length;
   const effectivePresentCount = Math.max(0, totalStudentsCount - effectiveDroppedCount - combinedAbsenteeCount);
 
   const handleCopyText = async (key: string, text: string) => {
@@ -246,8 +247,8 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       `${prefix}ថ្នាក់៖ ${className || 'មិនបានបញ្ជាក់'}`,
       `${prefix}កាលបរិច្ឆេទ៖ ${attendanceDate}`,
       `${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`,
-      `${prefix}សិស្សថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
-      `${prefix}សិស្សឈប់ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
+      `${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
+      `${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
       `${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`,
       `${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`,
       `${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`,
@@ -275,8 +276,8 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       sections.push(`${prefix}ថ្នាក់៖ ${className || 'មិនបានបញ្ជាក់'}`);
       sections.push(`${prefix}កាលបរិច្ឆេទ៖ ${attendanceDate}`);
       sections.push(`${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`);
-      sections.push(`${prefix}សិស្សថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`);
-      sections.push(`${prefix}សិស្សឈប់ ៖ ${fmt(effectiveDroppedCount)} នាក់`);
+      sections.push(`${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`);
+      sections.push(`${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`);
       sections.push(`${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`);
       sections.push(`${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`);
       sections.push(`${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`);
@@ -337,8 +338,8 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
       `${prefix}ថ្នាក់៖ ${className || 'មិនបានបញ្ជាក់'}`,
       `${prefix}កាលបរិច្ឆេទ៖ ${attendanceDate}`,
       `${prefix}សិស្សចាស់ ៖ ${fmt(effectiveOldCount)} នាក់`,
-      `${prefix}សិស្សថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
-      `${prefix}សិស្សឈប់ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
+      `${prefix}សិស្សចូលថ្មី ៖ ${fmt(effectiveNewCount)} នាក់`,
+      `${prefix}សិស្សចេញ ៖ ${fmt(effectiveDroppedCount)} នាក់`,
       `${prefix}សិស្សសរុប ៖ ${fmt(totalStudentsCount)} នាក់`,
       `${prefix}សិស្សស្រី ៖ ${fmt(femaleStudentsCount)} នាក់`,
       `${prefix}សិស្សមករៀន ៖ ${fmt(effectivePresentCount)} នាក់`,
@@ -690,30 +691,30 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
               <span className="text-[10px] text-slate-400">នាក់</span>
             </div>
 
-            {/* សិស្សថ្មី */}
+            {/* សិស្សចូលថ្មី */}
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500">សិស្សថ្មី៖</span>
+              <span className="text-[11px] font-bold text-slate-500">សិស្សចូលថ្មី៖</span>
               <input
                 type="number"
                 min="0"
                 value={effectiveNewCount}
                 onChange={(e) => handleUpdateCount('new', parseInt(e.target.value, 10))}
                 className="w-12 text-center font-black text-xs text-emerald-600 dark:text-emerald-400 focus:outline-none"
-                title="បញ្ចូលចំនួនសិស្សថ្មី"
+                title="បញ្ចូលចំនួនសិស្សចូលថ្មី"
               />
               <span className="text-[10px] text-slate-400">នាក់</span>
             </div>
 
-            {/* សិស្សឈប់ (របារកំណត់ចំនួនឈប់) */}
+            {/* សិស្សចេញ (របារកំណត់ចំនួនចេញ) */}
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500">សិស្សឈប់៖</span>
+              <span className="text-[11px] font-bold text-slate-500">សិស្សចេញ៖</span>
               <input
                 type="number"
                 min="0"
                 value={effectiveDroppedCount}
                 onChange={(e) => handleUpdateCount('dropped', parseInt(e.target.value, 10))}
                 className="w-12 text-center font-black text-xs text-rose-500 dark:text-rose-400 focus:outline-none"
-                title="កំណត់ចំនួនសិស្សឈប់រៀន"
+                title="កំណត់ចំនួនសិស្សចេញ"
               />
               <span className="text-[10px] text-slate-400">នាក់</span>
             </div>
@@ -1171,30 +1172,30 @@ export const AttendanceCategoryViews: React.FC<AttendanceCategoryViewsProps> = (
             <span className="text-[10px] text-slate-400">នាក់</span>
           </div>
 
-          {/* សិស្សថ្មី */}
+          {/* សិស្សចូលថ្មី */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span className="text-[11px] font-bold text-slate-500">សិស្សថ្មី៖</span>
+            <span className="text-[11px] font-bold text-slate-500">សិស្សចូលថ្មី៖</span>
             <input
               type="number"
               min="0"
               value={effectiveNewCount}
               onChange={(e) => handleUpdateCount('new', parseInt(e.target.value, 10))}
               className="w-12 text-center font-black text-xs text-emerald-600 dark:text-emerald-400 focus:outline-none"
-              title="បញ្ចូលចំនួនសិស្សថ្មី"
+              title="បញ្ចូលចំនួនសិស្សចូលថ្មី"
             />
             <span className="text-[10px] text-slate-400">នាក់</span>
           </div>
 
-          {/* សិស្សឈប់ (របារកំណត់ចំនួនឈប់) */}
+          {/* សិស្សចេញ (របារកំណត់ចំនួនចេញ) */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span className="text-[11px] font-bold text-slate-500">សិស្សឈប់៖</span>
+            <span className="text-[11px] font-bold text-slate-500">សិស្សចេញ៖</span>
             <input
               type="number"
               min="0"
               value={effectiveDroppedCount}
               onChange={(e) => handleUpdateCount('dropped', parseInt(e.target.value, 10))}
               className="w-12 text-center font-black text-xs text-rose-500 dark:text-rose-400 focus:outline-none"
-              title="កំណត់ចំនួនសិស្សឈប់រៀន"
+              title="កំណត់ចំនួនសិស្សចេញ"
             />
             <span className="text-[10px] text-slate-400">នាក់</span>
           </div>

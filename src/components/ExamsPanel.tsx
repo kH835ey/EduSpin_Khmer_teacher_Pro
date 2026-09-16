@@ -39,7 +39,7 @@ import FormulaRenderer, { renderFormulaToHtml, preprocessText } from './FormulaR
 import ExamPaperView from './ExamPaperView';
 import LessonsPanel from './lessons/LessonsPanel';
 import ExternalDocumentsPanel from './external-docs/ExternalDocumentsPanel';
-import { db, safeSetDoc, safeGetDoc } from '../lib/firebase';
+import { db, safeSetDoc, safeGetDoc, safeOnSnapshot } from '../lib/firebase';
 import { doc } from 'firebase/firestore';
 import { 
   Document, 
@@ -391,40 +391,35 @@ export default function ExamsPanel({
       setSelectedExamId('');
     }
 
-    // Also fetch from cloud if teacher is logged in and class is active
+    // Real-time Cloud Synchronization for exams (across devices)
     if (teacher?.id && activeClassId) {
-      safeGetDoc(doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'examsData', 'papers'))
-        .then(async snap => {
-          let cloudExams: any[] | null = null;
-          if (snap && snap.exists()) {
-            const data = snap.data();
-            if (data && Array.isArray(data.exams) && data.exams.length > 0) {
-              cloudExams = data.exams;
-            }
+      const papersRef = doc(db, 'teachers', teacher.id, 'classes', activeClassId, 'examsData', 'papers');
+      const unsubscribe = safeOnSnapshot(papersRef, (snap: any) => {
+        let cloudExams: any[] | null = null;
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.exams) && data.exams.length > 0) {
+            cloudExams = data.exams;
           }
-          if (!cloudExams) {
-            const classSnap = await safeGetDoc(doc(db, 'teachers', teacher.id, 'classes', activeClassId));
-            if (classSnap && classSnap.exists()) {
-              const cData = classSnap.data();
-              if (cData && Array.isArray(cData.exams) && cData.exams.length > 0) {
-                cloudExams = cData.exams;
-              }
-            }
-          }
+        }
 
-          if (cloudExams && cloudExams.length > 0) {
-            const formatted = sanitizeExams(cloudExams, defaultSchool);
-            setExams(formatted);
-            localStorage.setItem(key, JSON.stringify(formatted));
+        if (cloudExams && cloudExams.length > 0) {
+          const formatted = sanitizeExams(cloudExams, defaultSchool);
+          setExams(formatted);
+          localStorage.setItem(key, JSON.stringify(formatted));
+          setSelectedExamId(prevId => {
+            if (prevId && formatted.some((e: any) => e.id === prevId)) return prevId;
             const cloudMatched = formatted.filter((e: any) => e.type === activeType);
-            if (cloudMatched.length > 0) {
-              setSelectedExamId(cloudMatched[0].id);
-            } else if (formatted.length > 0) {
-              setSelectedExamId(formatted[0].id);
-            }
-          }
-        })
-        .catch(err => console.warn("Notice: Cloud exams deferred while offline:", err));
+            return cloudMatched[0]?.id || formatted[0]?.id || '';
+          });
+        }
+      }, (err: any) => {
+        console.warn("Notice: Real-time cloud exams listener notice:", err);
+      });
+
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
     }
   }, [activeClassId, teacher?.id]);
 
