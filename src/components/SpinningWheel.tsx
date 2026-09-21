@@ -465,7 +465,7 @@ export default function SpinningWheel({
         <motion.div
           ref={wheelRef}
           animate={controls}
-          className="w-full h-full rounded-full shadow-2xl bg-white dark:bg-slate-900 border-8 border-white dark:border-slate-800 p-1 relative overflow-hidden"
+          className="w-full h-full rounded-full shadow-2xl bg-white dark:bg-[#222222] border-8 border-white dark:border-[#333333] p-1 relative overflow-hidden"
           style={{ originX: '50%', originY: '50%' }}
         >
           <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
@@ -477,7 +477,7 @@ export default function SpinningWheel({
         <button
           onClick={handleSpin}
           disabled={isSpinning || students.length === 0}
-          className="absolute w-16 h-16 bg-white dark:bg-slate-800 rounded-full border-4 border-indigo-600 dark:border-indigo-500 shadow-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold hover:scale-105 active:scale-95 disabled:scale-100 disabled:opacity-40 transition-all z-10 cursor-pointer"
+          className="absolute w-16 h-16 bg-white dark:bg-[#2a2a2a] rounded-full border-4 border-indigo-600 dark:border-indigo-500 shadow-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold hover:scale-105 active:scale-95 disabled:scale-100 disabled:opacity-40 transition-all z-10 cursor-pointer"
         >
           <Play className="w-8 h-8 fill-indigo-600 text-indigo-600" />
         </button>
@@ -488,7 +488,7 @@ export default function SpinningWheel({
         {/* Reset - Left (ខាងឆ្វេង) */}
         <button
           onClick={handleResetPicked}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95"
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#383838] text-slate-700 dark:text-slate-200 rounded-2xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-[#333333] transition-all cursor-pointer shadow-2xs active:scale-95"
           title="កំណត់ឡើងវិញ / Reset"
         >
           <RotateCcw className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -499,7 +499,7 @@ export default function SpinningWheel({
         <button
           onClick={handleRepick}
           disabled={isSpinning || students.length === 0}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#383838] text-slate-700 dark:text-slate-200 rounded-2xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-[#333333] transition-all cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
           title="រើសម្តងទៀត / Re-pick"
         >
           <Shuffle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />

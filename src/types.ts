@@ -95,6 +95,10 @@ export interface TeacherAccount {
   username: string;
   password?: string;
   avatarUrl?: string;
+  email?: string;
+  authProvider?: 'username' | 'email' | 'google' | 'facebook' | 'telegram';
+  telegramId?: string;
+  telegramUsername?: string;
 }
 
 export interface GroupMember extends Student {

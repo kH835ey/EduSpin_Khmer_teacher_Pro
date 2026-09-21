@@ -2804,10 +2804,10 @@ export default function App() {
   const activeCard = cards.find(c => c.id === activeCardId) || null;
 
   return (
-    <div className={`flex flex-col h-screen ${isDarkMode ? 'bg-[#0f172a] text-slate-100 dark' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`flex flex-col h-screen ${isDarkMode ? 'bg-[#222222] text-slate-100 dark' : 'bg-[#f8fafc] text-slate-900'}`}>
       {/* Header */}
       <header className={`h-20 flex items-center justify-between px-6 lg:px-8 shrink-0 z-20 border-b transition-colors ${
-        isDarkMode ? 'bg-[#1e293b] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+        isDarkMode ? 'bg-[#222222] border-[#333333]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         <div 
           onClick={() => setActiveTab('wheel')}
@@ -2835,7 +2835,7 @@ export default function App() {
         {/* Dynamic Telegram iOS Liquid Glass Water Droplet Navigation Tabs */}
         <nav className={`flex items-center gap-1.5 p-1.5 rounded-2xl border backdrop-blur-2xl overflow-x-auto no-scrollbar max-w-full select-none relative z-10 shrink-0 ${
           isDarkMode 
-            ? 'bg-slate-900/80 border-slate-800 shadow-[inset_0_1px_2px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.4)]' 
+            ? 'bg-[#1c1c20]/90 border-white/10 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05),0_8px_30px_rgba(0,0,0,0.6)]' 
             : 'bg-slate-200/60 border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(0,0,0,0.04)]'
         }`}>
           {[
@@ -2853,12 +2853,12 @@ export default function App() {
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.94, scaleY: 0.9, scaleX: 1.05 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
                 transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                className={`relative px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer select-none whitespace-nowrap transition-colors duration-200 focus:outline-none ${
+                className={`relative px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 cursor-pointer select-none whitespace-nowrap transition-colors duration-200 focus:outline-none ${
                   isActive
-                    ? isDarkMode ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold'
+                    ? isDarkMode ? 'text-blue-400 font-black' : 'text-blue-600 font-black'
                     : isDarkMode ? 'text-slate-300 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
@@ -2871,30 +2871,41 @@ export default function App() {
                       damping: 22,
                       mass: 0.65
                     }}
-                    className={`absolute inset-0 rounded-xl border backdrop-blur-2xl overflow-hidden pointer-events-none ${
+                    className={`absolute inset-0 rounded-full border backdrop-blur-2xl overflow-hidden pointer-events-none ${
                       isDarkMode
-                        ? 'bg-white/[0.08] border-white/35 shadow-[0_4px_24px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(255,255,255,0.1)]'
-                        : 'bg-white/80 border-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.03),inset_0_2.5px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(255,255,255,0.5)]'
+                        ? 'bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-slate-950/95 border-white/35 shadow-[0_6px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(0,0,0,0.6)]'
+                        : 'bg-gradient-to-b from-slate-100/95 via-white/95 to-slate-200/95 border-white/90 shadow-[0_6px_20px_rgba(0,0,0,0.12),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.08)]'
                     }`}
                   >
                     {/* Top Specular Glare Dome Reflection (ចំណាំងពន្លឺកោងមូលតំណក់ទឹកថ្លា) */}
-                    <div className={`absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b rounded-t-xl pointer-events-none ${
+                    <div className={`absolute top-0 inset-x-1.5 h-[48%] bg-gradient-to-b rounded-t-full pointer-events-none ${
                       isDarkMode 
-                        ? 'from-white/50 via-white/12 to-transparent' 
-                        : 'from-white/95 via-white/40 to-transparent'
+                        ? 'from-white/70 via-white/20 to-transparent' 
+                        : 'from-white/95 via-white/45 to-transparent'
                     }`} />
 
                     {/* Central Radial Light Core (ស្នូលពន្លឺរលោងខាងក្នុង) */}
-                    <div className={`absolute top-1 left-1/2 -translate-x-1/2 w-3/4 h-2.5 pointer-events-none ${
+                    <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-4/5 h-3 pointer-events-none ${
                       isDarkMode
-                        ? 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.3)_0%,_transparent_75%)]'
-                        : 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.95)_0%,_transparent_75%)]'
+                        ? 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.45)_0%,_transparent_70%)]'
+                        : 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.95)_0%,_transparent_70%)]'
                     }`} />
 
-                    {/* Bottom Droplet Meniscus Light Rim (គែមពន្លឺបាតតំណក់ទឹកថ្លា) */}
-                    <div className={`absolute bottom-0 inset-x-2 h-[1px] bg-gradient-to-r from-transparent to-transparent pointer-events-none ${
-                      isDarkMode ? 'via-white/50' : 'via-white/90'
-                    }`} />
+                    {/* Continuous Liquid Wave Sweep Animation (ចលនារលកពន្លឺតំណក់ទឹក) */}
+                    <motion.div 
+                      animate={{
+                        x: ['-100%', '100%']
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2.8,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+                    />
+
+                    {/* Bottom Droplet Light Rim */}
+                    <div className={`absolute bottom-0 inset-x-2 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none`} />
                   </motion.div>
                 )}
 
@@ -2914,8 +2925,8 @@ export default function App() {
                   <span className={
                     isActive 
                       ? isDarkMode 
-                        ? 'text-blue-400 font-extrabold tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]' 
-                        : 'text-blue-600 font-extrabold tracking-wide' 
+                        ? 'text-blue-400 font-black tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]' 
+                        : 'text-blue-600 font-black tracking-wide' 
                       : 'font-bold'
                   }>{tab.label}</span>
                   {tab.badge && (
@@ -2993,27 +3004,50 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <button
+            <div className="flex items-center gap-2">
+              {/* ចូលគណនី - 3D Glass Liquid Capsule Button */}
+              <motion.button
                 onClick={() => {
                   setAuthModalMode('login');
                   setIsAuthModalOpen(true);
                 }}
-                className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border border-indigo-200 dark:border-indigo-800/60 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
+                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                className="relative px-4 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 text-white bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-slate-950/95 border border-white/35 shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_2px_3px_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(0,0,0,0.6)] backdrop-blur-xl cursor-pointer overflow-hidden group select-none"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">ចូលគណនី</span>
-              </button>
-              <button
+                <div className="absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b from-white/70 via-white/20 to-transparent rounded-t-full pointer-events-none" />
+                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-4/5 h-2.5 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.5)_0%,_transparent_75%)] pointer-events-none" />
+                <motion.div
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+                />
+                <LogIn className="w-3.5 h-3.5 text-blue-400 relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                <span className="hidden sm:inline relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">ចូលគណនី</span>
+              </motion.button>
+
+              {/* ចុះឈ្មោះគ្រូ - 3D Glass Liquid Capsule Button */}
+              <motion.button
                 onClick={() => {
                   setAuthModalMode('register');
                   setIsAuthModalOpen(true);
                 }}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
+                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                className="relative px-4 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 text-white bg-gradient-to-b from-blue-600 via-indigo-600 to-indigo-900 border border-white/40 shadow-[0_6px_20px_rgba(79,70,229,0.5),inset_0_2px_3px_rgba(255,255,255,0.85),inset_0_-2px_4px_rgba(0,0,0,0.5)] backdrop-blur-xl cursor-pointer overflow-hidden group select-none"
               >
-                <User className="w-3.5 h-3.5" />
-                <span>ចុះឈ្មោះគ្រូ</span>
-              </button>
+                <div className="absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b from-white/75 via-white/25 to-transparent rounded-t-full pointer-events-none" />
+                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-4/5 h-2.5 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.6)_0%,_transparent_75%)] pointer-events-none" />
+                <motion.div
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+                />
+                <User className="w-3.5 h-3.5 relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">ចុះឈ្មោះគ្រូ</span>
+              </motion.button>
             </div>
           )}
 
@@ -3065,7 +3099,7 @@ export default function App() {
 
       {/* Class Switcher & Workspace Sub-Bar */}
       <div className={`py-2.5 px-6 lg:px-8 flex items-center justify-between shrink-0 border-b transition-colors gap-4 overflow-x-auto ${
-        isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50/90 border-slate-200'
+        isDarkMode ? 'bg-[#222222]/95 border-[#333333]' : 'bg-slate-50/90 border-slate-200'
       }`}>
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-1.5 mr-1 text-slate-500 dark:text-slate-400 font-bold text-xs">
@@ -3080,24 +3114,43 @@ export default function App() {
                 <span className="text-xs text-slate-500 dark:text-slate-400 italic">
                   មិនទាន់មានគណនីចូលប្រើ — ទិន្នន័យទទេរ
                 </span>
-                <button
+                <motion.button
                   onClick={() => {
                     setAuthModalMode('login');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 py-1 text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className="relative px-3.5 py-1 rounded-full text-xs font-black flex items-center gap-1 text-white bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-slate-950/95 border border-white/35 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_2px_3px_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(0,0,0,0.6)] backdrop-blur-xl cursor-pointer overflow-hidden group select-none"
                 >
-                  ចូលគណនី
-                </button>
-                <button
+                  <div className="absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b from-white/70 via-white/20 to-transparent rounded-t-full pointer-events-none" />
+                  <motion.div
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+                  />
+                  <span className="relative z-10 text-blue-300 drop-shadow-xs">ចូលគណនី</span>
+                </motion.button>
+
+                <motion.button
                   onClick={() => {
                     setAuthModalMode('register');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 py-1 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className="relative px-3.5 py-1 rounded-full text-xs font-black flex items-center gap-1 text-white bg-gradient-to-b from-blue-600 via-indigo-600 to-indigo-900 border border-white/40 shadow-[0_4px_16px_rgba(79,70,229,0.5),inset_0_2px_3px_rgba(255,255,255,0.85),inset_0_-2px_4px_rgba(0,0,0,0.5)] backdrop-blur-xl cursor-pointer overflow-hidden group select-none"
                 >
-                  ចុះឈ្មោះគ្រូ
-                </button>
+                  <div className="absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b from-white/75 via-white/25 to-transparent rounded-t-full pointer-events-none" />
+                  <motion.div
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+                  />
+                  <span className="relative z-10 drop-shadow-xs">ចុះឈ្មោះគ្រូ</span>
+                </motion.button>
               </div>
             ) : classes.length === 0 ? (
               <span className="text-xs text-slate-400 dark:text-slate-500 italic px-3 py-1">
@@ -3110,23 +3163,23 @@ export default function App() {
                 <motion.div 
                   key={cls.id ? `class-${cls.id}` : `class-idx-${idx}`}
                   onClick={() => handleSwitchClass(cls.id)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.94, scaleY: 0.9, scaleX: 1.05 }}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.92, scaleY: 0.88, scaleX: 1.06 }}
                   transition={{ type: "spring", stiffness: 500, damping: 20 }}
                   draggable={canDrag && !cls.isPinned}
                   onDragStart={(e) => handleClassDragStart(e as any, idx)}
                   onDragOver={(e) => handleClassDragOver(e as any, idx)}
                   onDragEnd={handleClassDragEnd}
                   onMouseLeave={() => setCanDrag(false)}
-                  className={`group/item relative px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap transition-colors duration-200 focus:outline-none ${
+                  className={`group/item relative px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap transition-colors duration-200 focus:outline-none ${
                     draggedClassIndex === idx
                       ? 'opacity-40 border-dashed border-indigo-400 bg-indigo-50 dark:bg-slate-800 scale-95'
                       : isActive 
-                        ? isDarkMode ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold' 
+                        ? isDarkMode ? 'text-blue-400 font-black' : 'text-blue-600 font-black' 
                         : isDarkMode ? 'text-slate-300 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   }`}
                 >
-                  {/* Water Droplet Liquid Glass Pill */}
+                  {/* Water Droplet 3D Glass Liquid Pill */}
                   {isActive && (
                     <motion.div
                       layoutId="classWaterDroplet"
@@ -3136,30 +3189,41 @@ export default function App() {
                         damping: 22,
                         mass: 0.65
                       }}
-                      className={`absolute inset-0 rounded-xl border backdrop-blur-2xl overflow-hidden pointer-events-none ${
+                      className={`absolute inset-0 rounded-full border backdrop-blur-2xl overflow-hidden pointer-events-none ${
                         isDarkMode
-                          ? 'bg-white/[0.08] border-white/35 shadow-[0_4px_24px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(255,255,255,0.1)]'
-                          : 'bg-white/80 border-white/95 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.03),inset_0_2.5px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(255,255,255,0.5)]'
+                          ? 'bg-gradient-to-b from-slate-800/90 via-slate-900/95 to-slate-950/95 border-white/35 shadow-[0_6px_20px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(0,0,0,0.6)]'
+                          : 'bg-gradient-to-b from-slate-100/95 via-white/95 to-slate-200/95 border-white/90 shadow-[0_6px_20px_rgba(0,0,0,0.12),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.08)]'
                       }`}
                     >
-                      {/* Top Specular Glare Dome Reflection (ចំណាំងពន្លឺកោងមូលតំណក់ទឹកថ្លា) */}
-                      <div className={`absolute top-0 inset-x-1 h-[48%] bg-gradient-to-b rounded-t-xl pointer-events-none ${
+                      {/* Top Specular Glare Dome Reflection */}
+                      <div className={`absolute top-0 inset-x-1.5 h-[48%] bg-gradient-to-b rounded-t-full pointer-events-none ${
                         isDarkMode 
-                          ? 'from-white/50 via-white/12 to-transparent' 
-                          : 'from-white/95 via-white/40 to-transparent'
+                          ? 'from-white/70 via-white/20 to-transparent' 
+                          : 'from-white/95 via-white/45 to-transparent'
                       }`} />
                       
-                      {/* Central Radial Light Core (ស្នូលពន្លឺរលោងខាងក្នុង) */}
-                      <div className={`absolute top-1 left-1/2 -translate-x-1/2 w-3/4 h-2 pointer-events-none ${
+                      {/* Central Radial Light Core */}
+                      <div className={`absolute top-0.5 left-1/2 -translate-x-1/2 w-4/5 h-2.5 pointer-events-none ${
                         isDarkMode
-                          ? 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.3)_0%,_transparent_75%)]'
+                          ? 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.45)_0%,_transparent_75%)]'
                           : 'bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.95)_0%,_transparent_75%)]'
                       }`} />
 
-                      {/* Bottom Droplet Meniscus Light Rim */}
-                      <div className={`absolute bottom-0 inset-x-2 h-[1px] bg-gradient-to-r from-transparent to-transparent pointer-events-none ${
-                        isDarkMode ? 'via-white/50' : 'via-white/90'
-                      }`} />
+                      {/* Continuous Liquid Wave Animation */}
+                      <motion.div 
+                        animate={{
+                          x: ['-100%', '100%']
+                        }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 2.8,
+                          ease: "easeInOut"
+                        }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+                      />
+
+                      {/* Bottom Droplet Light Rim */}
+                      <div className={`absolute bottom-0 inset-x-2 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none`} />
                     </motion.div>
                   )}
 
@@ -3343,7 +3407,7 @@ export default function App() {
       <main className="flex-1 flex overflow-hidden">
         {activeTab === 'wheel' && (
           <>
-            <section className="flex-1 md:basis-3/5 h-full overflow-y-auto flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+            <section className="flex-1 md:basis-3/5 h-full overflow-y-auto flex flex-col bg-slate-50 dark:bg-[#222222]">
               <SpinningWheel
                 students={currentClassStudents}
                 pickedIds={currentClassPickedIds}
@@ -3364,7 +3428,7 @@ export default function App() {
               />
             </section>
             
-            <aside className="hidden md:block md:basis-2/5 h-full shrink-0 border-l border-slate-200 dark:border-slate-800">
+            <aside className="hidden md:block md:basis-2/5 h-full shrink-0 border-l border-slate-200 dark:border-[#333333]">
               <StudentPanel
                 students={currentClassStudents}
                 pickedIds={currentClassPickedIds}
@@ -3388,9 +3452,9 @@ export default function App() {
 
         {activeTab === 'quiz' && (
           <>
-            <aside className="basis-2/5 h-full shrink-0 hidden md:flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+            <aside className="basis-2/5 h-full shrink-0 hidden md:flex flex-col bg-slate-50 dark:bg-[#222222]">
               {/* Quick Switcher between Spinning Wheel (Image 1 - Default) and Student List (Image 3) */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-[#333333] bg-white dark:bg-[#222222] shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-slate-700 dark:text-slate-200">
                     {quizLeftView === 'wheel' ? 'កងបង្វិលសិស្ស' : 'បញ្ជីឈ្មោះសិស្ស'}
