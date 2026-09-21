@@ -10,6 +10,7 @@ export interface MonthlyDetailedScore {
   week2?: WeeklyScoreBreakdown;
   week3?: WeeklyScoreBreakdown;
   week4?: WeeklyScoreBreakdown;
+  groupWork?: number; // ការងារក្រុម (Group Work)
   quiz?: number; // Quiz
   notebook?: number; // ពិនិត្យសៀវភៅ
   manualTotal?: number; // Teacher override total for the month
@@ -94,6 +95,17 @@ export interface TeacherAccount {
   username: string;
   password?: string;
   avatarUrl?: string;
+}
+
+export interface GroupMember extends Student {
+  assignedRole?: 'ប្រធាន' | 'អនុប្រធាន' | 'សមាជិក';
+  groupScore?: number;
+}
+
+export interface Group {
+  id: number;
+  name: string;
+  members: GroupMember[];
 }
 
 export function isStudentInClass(

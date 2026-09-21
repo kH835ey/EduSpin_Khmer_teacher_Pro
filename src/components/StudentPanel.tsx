@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { UserPlus, RotateCw, Trophy, Trash2, Users, FileSpreadsheet, ClipboardList } from 'lucide-react';
+import { UserPlus, RotateCw, Trophy, Trash2, Users, FileSpreadsheet, ClipboardList, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import confetti from 'canvas-confetti';
 import { Student } from '../types';
 import { StudentQuickEditModal } from './StudentQuickEditModal';
+import StudentListCallingModal from './StudentListCallingModal';
+import { getCurrentDateScoreSlot, getStudentCurrentWeekActivityScore } from '../lib/scoreUtils';
 
 const TICK_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
 const FIREWORK_URL = 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3';
@@ -49,7 +51,11 @@ const playSyntheticTick = () => {
 interface StudentPanelProps {
   students: Student[];
   pickedIds: string[];
+  manualCalledIds?: string[];
   onSetPickedIds: React.Dispatch<React.SetStateAction<string[]>>;
+  onToggleManualCall?: (studentId: string) => void;
+  onAwardActivityPoints?: (studentId: string, points: number) => void;
+  onSetExactActivityScore?: (studentId: string, exactScore: number) => void;
   onAddStudent: (name: string) => void;
   onRemoveStudent: (id: string) => void;
   onClearStudents: () => void;
@@ -63,7 +69,11 @@ interface StudentPanelProps {
 export default function StudentPanel({ 
   students, 
   pickedIds,
+  manualCalledIds = [],
   onSetPickedIds,
+  onToggleManualCall,
+  onAwardActivityPoints,
+  onSetExactActivityScore,
   onAddStudent, 
   onRemoveStudent, 
   onClearStudents,
@@ -78,6 +88,7 @@ export default function StudentPanel({
   const [showBulkInput, setShowBulkInput] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
+  const [showStudentListModal, setShowStudentListModal] = useState(false);
 
   const tickAudio = useRef<HTMLAudioElement | null>(null);
   const fireworkAudio = useRef<HTMLAudioElement | null>(null);
@@ -180,12 +191,17 @@ export default function StudentPanel({
     setIsSpinning(true);
     let count = 0;
     
-    // Filter out already picked students
-    let availableStudents = students.filter(s => !pickedIds.includes(s.id));
+    // Filter out already picked students and teacher manually called students
+    let availableStudents = students.filter(s => !pickedIds.includes(s.id) && !manualCalledIds.includes(s.id));
     
-    // If everyone has been picked, reset the pool
+    // If everyone has been picked, reset the pool (excluding manualCalledIds if possible)
     if (availableStudents.length === 0) {
-      availableStudents = [...students];
+      const notManuallyCalled = students.filter(s => !manualCalledIds.includes(s.id));
+      if (notManuallyCalled.length > 0) {
+        availableStudents = notManuallyCalled;
+      } else {
+        availableStudents = [...students];
+      }
       onSetPickedIds([]);
     }
 
@@ -253,15 +269,31 @@ export default function StudentPanel({
           បញ្ជីឈ្មោះសិស្ស ({students.length})
         </h2>
         <div className="flex items-center justify-end gap-1.5 overflow-x-auto custom-scrollbar-hide flex-wrap">
+          {/* កូន tap សម្រាប់ចុចចូលមើលឈ្មោះសិស្សទាំងអស់ ស្ថានភាព និងគ្រូហៅផ្ទាល់ */}
+          <button 
+            type="button"
+            onClick={() => setShowStudentListModal(true)}
+            className="shrink-0 flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 px-2.5 py-1.5 rounded-full transition-all shadow-xs border border-indigo-200 dark:border-indigo-800/60 cursor-pointer active:scale-95"
+            title="មើលបញ្ជីឈ្មោះសិស្សទាំងអស់ បង្ហាញប្រាប់ ហៅរួច / មិនទាន់ហៅ និងគ្រូហៅផ្ទាល់"
+          >
+            <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>បញ្ជីសិស្ស & ហៅ</span>
+            {manualCalledIds.length > 0 && (
+              <span className="px-1 py-0.2 bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-full text-[9px] font-black">
+                {manualCalledIds.length}
+              </span>
+            )}
+          </button>
+
           {/* Quick View / Edit / Copy / Paste All button */}
           <button 
             type="button"
             onClick={() => setShowQuickEditModal(true)}
-            className="shrink-0 flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 px-2.5 py-1.5 rounded-full transition-all shadow-xs border border-indigo-200 dark:border-indigo-800/60 cursor-pointer active:scale-95"
+            className="shrink-0 flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-full transition-all shadow-xs border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95"
             title="មើល ចម្លង (Copy) បិទភ្ជាប់ (Paste) និងកែសម្រួលឈ្មោះសិស្សទាំងអស់"
           >
-            <ClipboardList className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>មើល & កែទាំងអស់</span>
+            <ClipboardList className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+            <span>កែសម្រួល</span>
           </button>
 
           {students.length > 0 && (
@@ -431,9 +463,11 @@ export default function StudentPanel({
               className={`group flex items-center justify-between p-3 rounded-xl border transition-all ${
                 selectedStudent?.id === student.id 
                   ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 shadow-sm ring-2 ring-indigo-200 dark:ring-indigo-900' 
-                  : pickedIds.includes(student.id)
-                    ? 'bg-slate-50 dark:bg-slate-800/45 border-slate-100 dark:border-slate-800 opacity-40 grayscale'
-                    : 'bg-white dark:bg-slate-900 border-[#e2e8f0] dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors text-slate-700 dark:text-slate-300'
+                  : manualCalledIds.includes(student.id)
+                    ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200'
+                    : pickedIds.includes(student.id)
+                      ? 'bg-slate-50 dark:bg-slate-800/45 border-slate-100 dark:border-slate-800 opacity-40 grayscale'
+                      : 'bg-white dark:bg-slate-900 border-[#e2e8f0] dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors text-slate-700 dark:text-slate-300'
               }`}
             >
               <div className="flex items-center gap-4">
@@ -453,19 +487,49 @@ export default function StudentPanel({
                 <div>
                   <div className="flex items-center gap-2">
                     <p className={`font-semibold leading-none ${selectedStudent?.id === student.id ? 'text-indigo-900 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-200'}`}>{student.name}</p>
-                    {pickedIds.includes(student.id) && !isSpinning && selectedStudent?.id !== student.id && (
+                    {manualCalledIds.includes(student.id) ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded">
+                        គ្រូហៅ
+                      </span>
+                    ) : pickedIds.includes(student.id) && !isSpinning && selectedStudent?.id !== student.id ? (
                       <span className="w-1.5 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                    )}
+                    ) : null}
                   </div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{student.score} ពិន្ទុ</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{student.score} ពិន្ទុ</p>
+                    {(() => {
+                      const { activityScore } = getStudentCurrentWeekActivityScore(student);
+                      if (activityScore <= 0) return null;
+                      return (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          សកម្មភាព: {activityScore}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={() => onRemoveStudent(student.id)}
-                className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 transition-opacity cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                {onAwardActivityPoints && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAwardActivityPoints(student.id, 5);
+                    }}
+                    className="px-1.5 py-0.5 text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 border border-emerald-300 dark:border-emerald-800 rounded-lg transition-all cursor-pointer shadow-2xs"
+                    title="បន្ថែម 5 ពិន្ទុ (សកម្មភាព)"
+                  >
+                    +5
+                  </button>
+                )}
+                <button 
+                  onClick={() => onRemoveStudent(student.id)}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 transition-opacity cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           ))
         )}
@@ -503,6 +567,22 @@ export default function StudentPanel({
             names.forEach(n => onAddStudent(n));
           }
         }}
+      />
+
+      {/* កូន tap ផ្ទាំង Modal បង្ហាញបញ្ជីឈ្មោះសិស្សទាំងអស់ ស្ថានភាព និងប៊ូតុងគ្រូហៅផ្ទាល់ */}
+      <StudentListCallingModal
+        isOpen={showStudentListModal}
+        onClose={() => setShowStudentListModal(false)}
+        students={students}
+        pickedIds={pickedIds}
+        manualCalledIds={manualCalledIds}
+        onToggleManualCall={onToggleManualCall || (() => {})}
+        onAwardActivityPoints={onAwardActivityPoints}
+        onSetExactActivityScore={onSetExactActivityScore}
+        onResetAllCalls={() => {
+          onSetPickedIds([]);
+        }}
+        className={activeClassName}
       />
     </div>
   );

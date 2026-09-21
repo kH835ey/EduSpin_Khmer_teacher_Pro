@@ -1,20 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useAnimation, AnimatePresence } from 'motion/react';
-import { RotateCcw, Shuffle, Plus, Play, UserPlus, X, Sparkles } from 'lucide-react';
+import { RotateCcw, Shuffle, Plus, Play, UserPlus, X, Sparkles, Users, UserCheck, Star, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Student } from '../types';
+import StudentListCallingModal from './StudentListCallingModal';
+import { getCurrentDateScoreSlot, getStudentCurrentWeekActivityScore } from '../lib/scoreUtils';
 
 interface SpinningWheelProps {
   students: Student[];
   pickedIds: string[];
+  manualCalledIds?: string[];
   onSetPickedIds: React.Dispatch<React.SetStateAction<string[]>>;
+  onToggleManualCall?: (studentId: string) => void;
   onSelectStudent: (student: Student) => void;
+  onWheelPickStudent?: (student: Student) => void;
+  onAwardActivityPoints?: (studentId: string, points: number) => void;
+  onSetExactActivityScore?: (studentId: string, exactScore: number) => void;
   selectedStudent: Student | null;
   onAddStudent: (name: string) => void;
   onBulkAddStudents?: (list: { name: string; gender: 'ប្រុស' | 'ស្រី'; status: 'ឆ្នើម' | 'សកម្ម' | 'កំពុងរីកចម្រើន' | 'គួរឲ្យបារម្ភ' }[]) => void;
   showBulkInput: boolean;
   setShowBulkInput: (val: boolean) => void;
   isDarkMode?: boolean;
+  className?: string;
 }
 
 const PALETTE = ['#06b6d4', '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#ef4444'];
@@ -68,21 +76,29 @@ const APPLAUSE_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-prev
 export default function SpinningWheel({
   students,
   pickedIds,
+  manualCalledIds = [],
   onSetPickedIds,
+  onToggleManualCall,
   onSelectStudent,
+  onWheelPickStudent,
+  onAwardActivityPoints,
+  onSetExactActivityScore,
   selectedStudent,
   onAddStudent,
   onBulkAddStudents,
   showBulkInput,
   setShowBulkInput,
-  isDarkMode = false
+  isDarkMode = false,
+  className = 'ថ្នាក់រៀន'
 }: SpinningWheelProps) {
   const [rotationDegrees, setRotationDegrees] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [needleColor, setNeedleColor] = useState('#ff4949');
   const [winnerStudent, setWinnerStudent] = useState<Student | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [showStudentListModal, setShowStudentListModal] = useState(false);
   const [randomEmoji, setRandomEmoji] = useState('🎉');
+  const [displayMode, setDisplayMode] = useState<'profile' | 'emoji'>('profile');
   const controls = useAnimation();
   const [bulkText, setBulkText] = useState('');
   const wheelRef = useRef<HTMLDivElement>(null);
@@ -120,8 +136,8 @@ export default function SpinningWheel({
     };
   }, []);
 
-  // Handle auto-reset of pickedIds if everyone has been picked
-  const availableStudents = students.filter(s => !pickedIds.includes(s.id));
+  // Exclude both wheel-called (pickedIds) and teacher manually called (manualCalledIds)
+  const availableStudents = students.filter(s => !pickedIds.includes(s.id) && !manualCalledIds.includes(s.id));
 
   // Listen to live rotation transformations:
   // 1. Changes needle color to match current active sector at the pointer (12 o'clock)
@@ -219,18 +235,24 @@ export default function SpinningWheel({
 
     setIsSpinning(true);
 
-    // Filter available pool
+    // Filter available pool (excluding both wheel-picked and teacher manually called)
     let activePicked = pickedIds;
     if (excludeId) {
       activePicked = activePicked.filter(id => id !== excludeId);
       onSetPickedIds(prev => prev.filter(id => id !== excludeId));
     }
-    let pool = students.filter(s => !activePicked.includes(s.id));
+    let pool = students.filter(s => !activePicked.includes(s.id) && !manualCalledIds.includes(s.id));
     if (excludeId && pool.length > 1) {
       pool = pool.filter(s => s.id !== excludeId);
     }
     if (pool.length === 0) {
-      pool = [...students];
+      // If all uncalled students have been exhausted, try students not in manualCalledIds
+      const notManuallyCalled = students.filter(s => !manualCalledIds.includes(s.id));
+      if (notManuallyCalled.length > 0) {
+        pool = notManuallyCalled;
+      } else {
+        pool = [...students];
+      }
       onSetPickedIds([]);
     }
 
@@ -258,6 +280,9 @@ export default function SpinningWheel({
     // Finished spinning
     setIsSpinning(false);
     onSelectStudent(chosenStudent);
+    if (onWheelPickStudent) {
+      onWheelPickStudent(chosenStudent);
+    }
     onSetPickedIds(prev => {
       if (prev.includes(chosenStudent.id)) return prev;
       return [...prev, chosenStudent.id];
@@ -394,7 +419,7 @@ export default function SpinningWheel({
 
       const color = PALETTE[idx % PALETTE.length];
       const midAngle = startAngle + sectorAngle / 2;
-      const isPicked = pickedIds.includes(student.id);
+      const isPicked = pickedIds.includes(student.id) || manualCalledIds.includes(student.id);
 
       return (
         <g key={student.id}>
@@ -459,7 +484,7 @@ export default function SpinningWheel({
       </div>
 
       {/* របារបញ្ជា៖ Reset (ខាងឆ្វេង) | Re-pick (កណ្ដាល) | ហៅសិស្សបន្ត (ខាងស្ដាំ) */}
-      <div className="flex items-center gap-2 sm:gap-3 w-full max-w-sm justify-center mb-6">
+      <div className="flex items-center gap-2 sm:gap-3 w-full max-w-sm justify-center mb-3">
         {/* Reset - Left (ខាងឆ្វេង) */}
         <button
           onClick={handleResetPicked}
@@ -491,6 +516,54 @@ export default function SpinningWheel({
           <Play className="w-3.5 h-3.5 fill-white shrink-0" />
           <span>ហៅសិស្សបន្ត</span>
         </button>
+      </div>
+
+      {/* កូន tap តូចមួយសម្រាប់ចុចចូលមើលឈ្មោះសិស្សទាំងអស់ និង Profile/Emoji Switch */}
+      <div className="w-full max-w-sm flex items-center justify-center gap-2 mb-5 flex-wrap">
+        <button
+          onClick={() => setShowStudentListModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 border border-indigo-200/80 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 rounded-full font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95 group"
+          title="មើលបញ្ជីឈ្មោះសិស្សទាំងអស់ & កំណត់ស្ថានភាពហៅ"
+        >
+          <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
+          <span>បញ្ជីសិស្ស & គ្រូហៅផ្ទាល់</span>
+          <span className="px-1.5 py-0.2 bg-indigo-200/70 dark:bg-indigo-800/80 text-indigo-800 dark:text-indigo-200 rounded-full text-[10px] font-black">
+            {students.length}
+          </span>
+          {manualCalledIds.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 rounded-full text-[10px] font-black">
+              <UserCheck className="w-2.5 h-2.5" />
+              {manualCalledIds.length}
+            </span>
+          )}
+        </button>
+
+        {/* Profile / Emoji Toggle Tap */}
+        <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setDisplayMode('profile')}
+            className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+              displayMode === 'profile'
+                ? 'text-rose-600 dark:text-rose-400 font-black bg-white dark:bg-slate-900 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+            }`}
+          >
+            Profile
+          </button>
+          <span className="text-slate-400 font-bold">/</span>
+          <button
+            type="button"
+            onClick={() => setDisplayMode('emoji')}
+            className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+              displayMode === 'emoji'
+                ? 'text-rose-600 dark:text-rose-400 font-black bg-white dark:bg-slate-900 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+            }`}
+          >
+            Emoji
+          </button>
+        </div>
       </div>
 
       {/* Bulk Add trigger link */}
@@ -563,9 +636,36 @@ export default function SpinningWheel({
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
               </div>
 
+              {/* Profile / Emoji Toggle Tap */}
+              <div className="flex items-center justify-center gap-1.5 mb-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('profile')}
+                  className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                    displayMode === 'profile'
+                      ? 'text-rose-600 dark:text-rose-400 font-black bg-white dark:bg-slate-900 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                  }`}
+                >
+                  Profile
+                </button>
+                <span className="text-slate-400 font-bold">/</span>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('emoji')}
+                  className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                    displayMode === 'emoji'
+                      ? 'text-rose-600 dark:text-rose-400 font-black bg-white dark:bg-slate-900 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-800'
+                  }`}
+                >
+                  Emoji
+                </button>
+              </div>
+
               {/* Profile Photo OR Animated Emoji */}
               <div className="relative my-2">
-                {winnerStudent.avatarUrl ? (
+                {displayMode === 'profile' && winnerStudent.avatarUrl ? (
                   <div className="relative">
                     <img
                       src={winnerStudent.avatarUrl}
@@ -582,7 +682,7 @@ export default function SpinningWheel({
                     transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
                     className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-linear-to-tr from-indigo-500/15 via-purple-500/20 to-pink-500/15 dark:from-indigo-500/25 dark:to-purple-500/25 ring-4 ring-indigo-500/30 flex items-center justify-center text-6xl sm:text-7xl shadow-2xl select-none mx-auto"
                   >
-                    {randomEmoji}
+                    {winnerStudent.emoji || randomEmoji}
                   </motion.div>
                 )}
               </div>
@@ -610,12 +710,70 @@ export default function SpinningWheel({
                 )}
               </div>
 
-              <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2">
+              <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-2">
                 🎉 បានជ្រើសរើសជាសិស្សឡើងឆ្លើយសំណួរ 🎉
               </p>
 
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold mt-2.5 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>សិស្សនឹងទទួលបាន 5 ពិន្ទុសកម្មភាព នៅពេលឆ្លើយសំណួរត្រូវ</span>
+              </div>
+
+              {/* Quick Score Adjustment Bar in Winner Card */}
+              {(() => {
+                const dateSlot = getCurrentDateScoreSlot();
+                const latestStudent = students.find(s => s.id === winnerStudent.id) || winnerStudent;
+                const { activityScore } = getStudentCurrentWeekActivityScore(latestStudent);
+
+                return (
+                  <div className="w-full mt-3 p-2.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex flex-col items-center gap-1.5">
+                    <div className="flex items-center justify-between w-full text-xs font-bold text-slate-700 dark:text-slate-300 px-1">
+                      <span className="text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>សកម្មភាព {dateSlot.weekLabel} (ខែ{dateSlot.month})</span>
+                      </span>
+                      <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                        {activityScore} ពិន្ទុ
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 w-full justify-center flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-400">កែពិន្ទុ៖</span>
+                      {[1, 2, 3, 5].map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => {
+                            if (onAwardActivityPoints) {
+                              onAwardActivityPoints(winnerStudent.id, pts);
+                            }
+                          }}
+                          className="px-2 py-0.5 rounded-lg text-xs font-black bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                          title={`បន្ថែម ${pts} ពិន្ទុ`}
+                        >
+                          +{pts}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onAwardActivityPoints && activityScore > 0) {
+                            onAwardActivityPoints(winnerStudent.id, -1);
+                          }
+                        }}
+                        disabled={activityScore <= 0}
+                        className="px-2 py-0.5 rounded-lg text-xs font-black bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 disabled:opacity-40 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        title="ដក 1 ពិន្ទុ"
+                      >
+                        -1
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* របារប៊ូតុងបញ្ជាខាងក្នុង Popup: Reset (ឆ្វេង) | Re-pick (កណ្ដាល) | ហៅសិស្សបន្ត (ស្ដាំ) */}
-              <div className="flex items-center gap-2 sm:gap-3 w-full mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 sm:gap-3 w-full mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                 {/* Reset (ឆ្វេង) */}
                 <button
                   onClick={handleResetPicked}
@@ -650,6 +808,22 @@ export default function SpinningWheel({
           </div>
         )}
       </AnimatePresence>
+
+      {/* កូន tap ផ្ទាំង Modal បង្ហាញបញ្ជីឈ្មោះសិស្សទាំងអស់ ស្ថានភាព និងប៊ូតុងគ្រូហៅផ្ទាល់ */}
+      <StudentListCallingModal
+        isOpen={showStudentListModal}
+        onClose={() => setShowStudentListModal(false)}
+        students={students}
+        pickedIds={pickedIds}
+        manualCalledIds={manualCalledIds}
+        onToggleManualCall={onToggleManualCall || (() => {})}
+        onAwardActivityPoints={onAwardActivityPoints}
+        onSetExactActivityScore={onSetExactActivityScore}
+        onResetAllCalls={() => {
+          onSetPickedIds([]);
+        }}
+        className={className}
+      />
     </div>
   );
 }

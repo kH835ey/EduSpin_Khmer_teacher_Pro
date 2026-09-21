@@ -82,10 +82,11 @@ export function StudentScoreTable({
     const w2 = (Number(monthData.week2?.activity) || 0) + (Number(monthData.week2?.homework) || 0) + (Number(monthData.week2?.quiz) || 0);
     const w3 = (Number(monthData.week3?.activity) || 0) + (Number(monthData.week3?.homework) || 0) + (Number(monthData.week3?.quiz) || 0);
     const w4 = (Number(monthData.week4?.activity) || 0) + (Number(monthData.week4?.homework) || 0) + (Number(monthData.week4?.quiz) || 0);
+    const groupWork = Number(monthData.groupWork) || 0;
     const quiz = Number(monthData.quiz) || 0;
     const notebook = Number(monthData.notebook) || 0;
 
-    return w1 + w2 + w3 + w4 + quiz + notebook;
+    return w1 + w2 + w3 + w4 + groupWork + quiz + notebook;
   };
 
   // Helper to calculate grand total for the month (monthly exam + subtotal)
@@ -154,6 +155,8 @@ export function StudentScoreTable({
 
     if (fieldPath === 'monthlyExam') {
       updatedMonthData.monthlyExam = val;
+    } else if (fieldPath === 'groupWork') {
+      updatedMonthData.groupWork = val;
     } else if (fieldPath === 'quiz') {
       updatedMonthData.quiz = val;
     } else if (fieldPath === 'notebook') {
@@ -178,10 +181,11 @@ export function StudentScoreTable({
     const w2 = (Number(updatedMonthData.week2?.activity) || 0) + (Number(updatedMonthData.week2?.homework) || 0) + (Number(updatedMonthData.week2?.quiz) || 0);
     const w3 = (Number(updatedMonthData.week3?.activity) || 0) + (Number(updatedMonthData.week3?.homework) || 0) + (Number(updatedMonthData.week3?.quiz) || 0);
     const w4 = (Number(updatedMonthData.week4?.activity) || 0) + (Number(updatedMonthData.week4?.homework) || 0) + (Number(updatedMonthData.week4?.quiz) || 0);
+    const groupWork = Number(updatedMonthData.groupWork) || 0;
     const quiz = Number(updatedMonthData.quiz) || 0;
     const notebook = Number(updatedMonthData.notebook) || 0;
 
-    const newTotal = mExam + w1 + w2 + w3 + w4 + quiz + notebook;
+    const newTotal = mExam + w1 + w2 + w3 + w4 + groupWork + quiz + notebook;
 
     onUpdateStudentDetail(student.id, {
       monthlyScores: {
@@ -321,12 +325,12 @@ export function StudentScoreTable({
 
     // Header rows matching the official Khmer layout
     const wsData: any[][] = [
-      ['', '', '', '', '', '', '', '', '', '', '', '', '', '', 'ព្រះរាជាណាចក្រកម្ពុជា', '', '', '', '', '', ''],
-      ['', 'Sovannaphumi School', '', '', '', '', '', '', '', '', '', '', '', '', 'ជាតិ សាសនា ព្រះមហាក្សត្រ', '', '', '', '', '', ''],
-      ['', '', '', '', `តារាងពិន្ទុសិស្សក្នុងខែ ${selectedMonth} (${currentClassName})`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['ល.រ', 'ID', 'ឈ្មោះសិស្ស', 'ភេទ', 'សរុប (ដក Exam)', 'សរុប ១ខែ', 'មធ្យមភាគ', 'ចំណាត់ថ្នាក់', `ពិន្ទុប្រចាំខែ ${selectedMonth}`, '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', '', 'Monthly Exam', 'Week1', '', '', 'Week2', '', '', 'Week3', '', '', 'Week4', '', '', 'Quiz', 'ពិនិត្យសៀវភៅ'],
-      ['', '', '', '', '', '', '', '', '', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', '', '']
+      ['', '', '', '', '', '', '', '', '', '', '', '', '', '', 'ព្រះរាជាណាចក្រកម្ពុជា', '', '', '', '', '', '', ''],
+      ['', 'Sovannaphumi School', '', '', '', '', '', '', '', '', '', '', '', '', 'ជាតិ សាសនា ព្រះមហាក្សត្រ', '', '', '', '', '', '', ''],
+      ['', '', '', '', `តារាងពិន្ទុសិស្សក្នុងខែ ${selectedMonth} (${currentClassName})`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['ល.រ', 'ID', 'ឈ្មោះសិស្ស', 'ភេទ', 'សរុប (ដក Exam)', 'សរុប 1 ខែ', 'មធ្យមភាគ', 'ចំណាត់ថ្នាក់', `ពិន្ទុប្រចាំខែ ${selectedMonth}`, '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', '', 'Monthly Exam', 'Week1', '', '', 'Week2', '', '', 'Week3', '', '', 'Week4', '', '', 'ការងារក្រុម', 'Quiz', 'ពិនិត្យសៀវភៅ'],
+      ['', '', '', '', '', '', '', '', '', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', 'សកម្មភាព', 'កិច្ចការផ្ទះ', 'Quiz', '', '', '']
     ];
 
     // Data rows
@@ -360,6 +364,7 @@ export function StudentScoreTable({
         monthData.week4?.activity ?? '',
         monthData.week4?.homework ?? '',
         monthData.week4?.quiz ?? '',
+        monthData.groupWork ?? '',
         monthData.quiz ?? '',
         monthData.notebook ?? ''
       ]);
@@ -369,25 +374,26 @@ export function StudentScoreTable({
 
     // Set merged ranges
     ws['!merges'] = [
-      { s: { r: 0, c: 14 }, e: { r: 0, c: 20 } }, // ព្រះរាជាណាចក្រកម្ពុជា
-      { s: { r: 1, c: 14 }, e: { r: 1, c: 20 } }, // ជាតិ សាសនា ព្រះមហាក្សត្រ
-      { s: { r: 2, c: 4 }, e: { r: 2, c: 18 } },  // Title
+      { s: { r: 0, c: 14 }, e: { r: 0, c: 21 } }, // ព្រះរាជាណាចក្រកម្ពុជា
+      { s: { r: 1, c: 14 }, e: { r: 1, c: 21 } }, // ជាតិ សាសនា ព្រះមហាក្សត្រ
+      { s: { r: 2, c: 4 }, e: { r: 2, c: 19 } },  // Title
       { s: { r: 3, c: 0 }, e: { r: 5, c: 0 } },   // ល.រ
       { s: { r: 3, c: 1 }, e: { r: 5, c: 1 } },   // ID
       { s: { r: 3, c: 2 }, e: { r: 5, c: 2 } },   // ឈ្មោះសិស្ស
       { s: { r: 3, c: 3 }, e: { r: 5, c: 3 } },   // ភេទ
       { s: { r: 3, c: 4 }, e: { r: 5, c: 4 } },   // សរុប (ដក Exam)
-      { s: { r: 3, c: 5 }, e: { r: 5, c: 5 } },   // សរុប ១ខែ
+      { s: { r: 3, c: 5 }, e: { r: 5, c: 5 } },   // សរុប 1 ខែ
       { s: { r: 3, c: 6 }, e: { r: 5, c: 6 } },   // មធ្យមភាគ
       { s: { r: 3, c: 7 }, e: { r: 5, c: 7 } },   // ចំណាត់ថ្នាក់
-      { s: { r: 3, c: 8 }, e: { r: 3, c: 22 } },  // ពិន្ទុប្រចាំខែ
+      { s: { r: 3, c: 8 }, e: { r: 3, c: 23 } },  // ពិន្ទុប្រចាំខែ
       { s: { r: 4, c: 8 }, e: { r: 5, c: 8 } },   // Monthly Exam
       { s: { r: 4, c: 9 }, e: { r: 4, c: 11 } },  // Week 1
       { s: { r: 4, c: 12 }, e: { r: 4, c: 14 } }, // Week 2
       { s: { r: 4, c: 15 }, e: { r: 4, c: 17 } }, // Week 3
       { s: { r: 4, c: 18 }, e: { r: 4, c: 20 } }, // Week 4
-      { s: { r: 4, c: 21 }, e: { r: 5, c: 21 } }, // Quiz
-      { s: { r: 4, c: 22 }, e: { r: 5, c: 22 } }  // ពិនិត្យសៀវភៅ
+      { s: { r: 4, c: 21 }, e: { r: 5, c: 21 } }, // ការងារក្រុម
+      { s: { r: 4, c: 22 }, e: { r: 5, c: 22 } }, // Quiz
+      { s: { r: 4, c: 23 }, e: { r: 5, c: 23 } }  // ពិនិត្យសៀវភៅ
     ];
 
     ws['!cols'] = [
@@ -764,7 +770,7 @@ export function StudentScoreTable({
                 {/* Header Row 1 */}
                 <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'} font-black border-b border-slate-200 dark:border-slate-800`}>
                   {/* ល.រ */}
-                  <th rowSpan={3} className="p-2.5 border-r border-slate-200 dark:border-slate-800 min-w-[45px] sticky left-0 z-30 bg-inherit shadow-xs">
+                  <th rowSpan={3} className={`p-2.5 border-r border-slate-200 dark:border-slate-800 w-[45px] min-w-[45px] max-w-[45px] sticky left-0 z-30 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'} shadow-xs`}>
                     ល.រ
                   </th>
                   
@@ -772,7 +778,7 @@ export function StudentScoreTable({
                   <th 
                     rowSpan={3} 
                     onClick={() => handleSortChange(sortMode === 'id' ? 'name' : 'id')}
-                    className="p-2.5 border-r border-slate-200 dark:border-slate-800 min-w-[75px] cursor-pointer hover:bg-indigo-500/10 transition-colors select-none group"
+                    className={`p-2.5 border-r border-slate-200 dark:border-slate-800 w-[65px] min-w-[65px] max-w-[65px] sticky left-[45px] z-30 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'} cursor-pointer hover:bg-indigo-500/10 transition-colors select-none group`}
                     title="ចុចដើម្បីតម្រៀបតាម ID (0-9 / A-Z)"
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -785,7 +791,7 @@ export function StudentScoreTable({
                   <th 
                     rowSpan={3} 
                     onClick={() => handleSortChange(sortMode === 'name' ? 'id' : 'name')}
-                    className="p-2.5 border-r border-slate-200 dark:border-slate-800 min-w-[155px] text-left pl-4 cursor-pointer hover:bg-indigo-500/10 transition-colors select-none group"
+                    className={`p-2.5 border-r-2 border-slate-300 dark:border-slate-700 min-w-[155px] text-left pl-4 sticky left-[110px] z-30 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'} shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)] cursor-pointer hover:bg-indigo-500/10 transition-colors select-none group`}
                     title="ចុចដើម្បីតម្រៀបតាមឈ្មោះ (ក-អ / A-Z)"
                   >
                     <div className="flex items-center gap-1.5">
@@ -860,7 +866,7 @@ export function StudentScoreTable({
                   </th>
 
                   {/* Header Span for Monthly Details */}
-                  <th colSpan={15} className="p-2.5 bg-indigo-600/10 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 font-black tracking-wide">
+                  <th colSpan={16} className="p-2.5 bg-indigo-600/10 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-b border-slate-200 dark:border-slate-800 font-black tracking-wide">
                     ពិន្ទុប្រចាំខែ {selectedMonth}
                   </th>
                 </tr>
@@ -881,6 +887,9 @@ export function StudentScoreTable({
                   </th>
                   <th colSpan={3} className="p-1.5 border-r border-slate-200 dark:border-slate-800 bg-rose-50/70 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-bold">
                     Week 4
+                  </th>
+                  <th rowSpan={2} className="p-2 border-r border-slate-200 dark:border-slate-800 min-w-[75px] bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300">
+                    ការងារក្រុម
                   </th>
                   <th rowSpan={2} className="p-2 border-r border-slate-200 dark:border-slate-800 min-w-[60px] bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300">
                     Quiz
@@ -927,22 +936,26 @@ export function StudentScoreTable({
                     const hasManualGrand = monthData.manualTotal !== undefined;
                     const hasManualAvg = monthData.manualAverage !== undefined;
 
+                    const rowBg = idx % 2 === 1 
+                      ? (isDarkMode ? 'bg-slate-900' : 'bg-slate-50') 
+                      : (isDarkMode ? 'bg-slate-950' : 'bg-white');
+
                     return (
                       <tr 
                         key={student.id}
-                        className={`hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-colors ${
+                        className={`group/row transition-colors ${
                           idx % 2 === 1 
-                            ? isDarkMode ? 'bg-slate-900/40' : 'bg-slate-50/50' 
-                            : 'bg-transparent'
-                        }`}
+                            ? isDarkMode ? 'bg-slate-900/90' : 'bg-slate-50' 
+                            : isDarkMode ? 'bg-slate-950' : 'bg-white'
+                        } hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40`}
                       >
                         {/* Index (No.) */}
-                        <td className="p-2 border-r border-slate-200 dark:border-slate-800 font-extrabold text-slate-500 sticky left-0 bg-inherit shadow-xs">
+                        <td className={`p-2 border-r border-slate-200 dark:border-slate-800 font-extrabold text-slate-500 sticky left-0 z-10 w-[45px] min-w-[45px] max-w-[45px] ${rowBg} group-hover/row:bg-indigo-50/90 dark:group-hover/row:bg-slate-900 transition-colors shadow-xs`}>
                           {idx + 1}
                         </td>
 
                         {/* ID Column (Editable inline or display) */}
-                        <td className="p-1 border-r border-slate-200 dark:border-slate-800">
+                        <td className={`p-1 border-r border-slate-200 dark:border-slate-800 sticky left-[45px] z-10 w-[65px] min-w-[65px] max-w-[65px] ${rowBg} group-hover/row:bg-indigo-50/90 dark:group-hover/row:bg-slate-900 transition-colors`}>
                           <input
                             type="text"
                             value={student.studentId || ''}
@@ -953,8 +966,8 @@ export function StudentScoreTable({
                           />
                         </td>
 
-                        {/* Name */}
-                        <td className="p-2 border-r border-slate-200 dark:border-slate-800 text-left pl-3.5 font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                        {/* Name - Sticky pinned */}
+                        <td className={`p-2 border-r-2 border-slate-300 dark:border-slate-700 text-left pl-3.5 font-black text-slate-800 dark:text-slate-100 whitespace-nowrap sticky left-[110px] z-10 min-w-[155px] ${rowBg} group-hover/row:bg-indigo-50/90 dark:group-hover/row:bg-slate-900 transition-colors shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] dark:shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]`}>
                           {student.name}
                         </td>
 
@@ -1220,6 +1233,19 @@ export function StudentScoreTable({
                           />
                         </td>
 
+                        {/* ការងារក្រុម (Group Work) */}
+                        <td className="p-1 border-r border-slate-200 dark:border-slate-800 bg-teal-50/40 dark:bg-teal-950/20">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={monthData.groupWork ?? ''}
+                            onChange={(e) => handleScoreFieldChange(student, 'groupWork', e.target.value)}
+                            className="w-full text-center py-1 bg-transparent hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 rounded font-black text-teal-700 dark:text-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            title="ពិន្ទុការងារក្រុម (Group Work)"
+                          />
+                        </td>
+
                         {/* Quiz Overall */}
                         <td className="p-1 border-r border-slate-200 dark:border-slate-800">
                           <input
@@ -1248,7 +1274,7 @@ export function StudentScoreTable({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={23} className="p-8 text-center text-slate-400">
+                    <td colSpan={24} className="p-8 text-center text-slate-400">
                       មិនមានសិស្សក្នុងថ្នាក់ ឬលក្ខខណ្ឌស្វែងរកនេះឡើយ។
                     </td>
                   </tr>
@@ -1363,7 +1389,7 @@ export function StudentScoreTable({
                         <Star className={`w-3.5 h-3.5 ${currentScore > 0 ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
                         <span className="text-base font-black tracking-tight">{currentScore}</span>
                       </div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider block -mt-0.5">សរុប ១ខែ</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider block -mt-0.5">សរុប 1 ខែ</span>
                     </div>
                   </div>
 

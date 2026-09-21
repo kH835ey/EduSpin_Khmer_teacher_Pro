@@ -615,10 +615,10 @@ export default function StudentPlayView() {
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-xl sm:rounded-2xl flex items-center justify-center text-emerald-400 mx-auto">
                     <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 animate-bounce" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-black text-emerald-400">🥳 ត្រឹមត្រូវល្អណាស់!</h3>
-                  <div className="inline-flex items-center gap-1 py-0.5 px-2.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/10 rounded-full text-[9px] sm:text-[10px] font-bold">
-                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    ទទួលបាន +{pointsEarned} ពិន្ទុ
+                  <h3 className="text-lg sm:text-2xl font-black text-emerald-400">ចម្លើយរបស់អ្នកត្រឹមត្រូវ</h3>
+                  <div className="inline-flex items-center gap-1.5 py-1 px-3.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded-full text-xs font-bold shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span>អបអរសាទរអ្នកទទួលបាន 5 ពិន្ទុ</span>
                   </div>
                 </>
               ) : answeredState === 'wrong' ? (

@@ -26,6 +26,7 @@ import { useConfirm } from './context/ConfirmContext.tsx';
 import { ClassModal } from './components/ClassModal';
 import SmartNotesApp from './components/smart-notes/SmartNotesApp';
 import { BookOpen } from 'lucide-react';
+import { addActivityPointsToStudent, setActivityScoreForStudent, addGroupWorkPointsToStudent, getCurrentDateScoreSlot } from './lib/scoreUtils';
 
 const EMOJIS = ["🥰", "😂", "😩", "🥳", "🥺", "😇", "😎", "🤩", "🤔", "🤗", "🤭", "🫠", "😤", "😮💨", "🫡", "😬", "🙄", "🤒", "😵💫", "😳", "🤪", "😜", "🤫", "🫣", "☹️", "😕"];
 
@@ -92,6 +93,44 @@ const sortClasses = (classList: ClassInfo[]): ClassInfo[] => {
   return sorted.map((c, idx) => ({ ...c, order: idx }));
 };
 
+function getInitialActiveTeacherAndClass() {
+  const savedTeacherObj = localStorage.getItem('logged_in_teacher');
+  let teacherObj: TeacherAccount | null = null;
+  let teacherId = '';
+  if (savedTeacherObj) {
+    try {
+      teacherObj = JSON.parse(savedTeacherObj);
+      teacherId = teacherObj?.id || '';
+    } catch {}
+  }
+  const savedActiveId = (teacherId ? localStorage.getItem(`khmer_teacher_active_class_id_${teacherId}`) : null)
+    || localStorage.getItem('khmer_teacher_active_class_id')
+    || '';
+  const savedClassesRaw = (teacherId ? localStorage.getItem(`khmer_teacher_classes_${teacherId}`) : null)
+    || localStorage.getItem('khmer_teacher_classes');
+  let effectiveClassId = savedActiveId;
+  let parsedClasses: ClassInfo[] = [];
+  if (savedClassesRaw) {
+    try {
+      const raw = JSON.parse(savedClassesRaw) as ClassInfo[];
+      parsedClasses = (raw || []).filter(c => c && c.name && c.name.trim() !== '');
+      if (savedActiveId && parsedClasses.some(c => c.id === savedActiveId)) {
+        effectiveClassId = savedActiveId;
+      } else if (parsedClasses.length > 0) {
+        effectiveClassId = parsedClasses[0].id;
+      }
+    } catch {}
+  }
+  if (!effectiveClassId && parsedClasses.length > 0) {
+    effectiveClassId = parsedClasses[0].id;
+  }
+  return {
+    teacher: teacherObj,
+    activeClassId: effectiveClassId,
+    classes: parsedClasses
+  };
+}
+
 export default function App() {
   const [studentMode] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -116,56 +155,25 @@ export default function App() {
     return saved === 'true';
   });
 
-  const lastLoadedClassId = useRef<string>('');
+  const initialClassState = getInitialActiveTeacherAndClass();
+  const lastLoadedClassId = useRef<string>(initialClassState.activeClassId);
 
   const [classes, setClasses] = useState<ClassInfo[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) {
-      return [];
+    const init = getInitialActiveTeacherAndClass();
+    if (init.classes.length > 0) {
+      return sortClasses(init.classes);
     }
-    try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const saved = localStorage.getItem(`khmer_teacher_classes_${teacherObj.id}`) || localStorage.getItem('khmer_teacher_classes');
-      if (saved) {
-        const rawClasses = JSON.parse(saved) as ClassInfo[];
-        const clean = (rawClasses || []).filter(c => c && c.name && c.name.trim() !== '');
-        if (clean.length > 0) {
-          return sortClasses(clean);
-        }
-      }
-    } catch (e) {}
     return [];
   });
 
   const [activeClassId, setActiveClassId] = useState<string>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) {
-      return '';
-    }
-    try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const savedActiveId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || localStorage.getItem('khmer_teacher_active_class_id');
-      const savedClassesRaw = localStorage.getItem(`khmer_teacher_classes_${teacherObj.id}`) || localStorage.getItem('khmer_teacher_classes');
-      if (savedClassesRaw) {
-        const availableClasses = (JSON.parse(savedClassesRaw) as ClassInfo[]).filter(c => c && c.name && c.name.trim() !== '');
-        if (savedActiveId && availableClasses.some(c => c.id === savedActiveId)) {
-          return savedActiveId;
-        }
-        return availableClasses[0]?.id || '';
-      }
-    } catch (e) {}
-    return '';
+    return getInitialActiveTeacherAndClass().activeClassId;
   });
 
   const [students, setStudents] = useState<Student[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) {
-      return [];
-    }
+    const { activeClassId: currentActiveId } = getInitialActiveTeacherAndClass();
+    if (!currentActiveId) return [];
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const currentActiveId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || localStorage.getItem('khmer_teacher_active_class_id') || '';
-      if (!currentActiveId) return [];
       const raw = localStorage.getItem(`students_class_${currentActiveId}`);
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -178,13 +186,36 @@ export default function App() {
   });
   
   const [cards, setCards] = useState<QuizCard[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return [];
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return [];
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return [];
+      // 1. Direct class card cache
       const saved = localStorage.getItem(`quiz_cards_class_${activeId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // 2. Room cards in subjects cache
+      const savedSub = localStorage.getItem(`subjects_class_${activeId}`);
+      const savedRoomId = localStorage.getItem(`active_room_id_${activeId}`);
+      if (savedSub) {
+        const parsedSub = JSON.parse(savedSub) as QuizSubject[];
+        if (Array.isArray(parsedSub)) {
+          for (const s of parsedSub) {
+            for (const ch of (s.chapters || [])) {
+              for (const rm of (ch.rooms || [])) {
+                if (savedRoomId ? rm.id === savedRoomId : true) {
+                  if (Array.isArray(rm.cards) && rm.cards.length > 0) {
+                    return rm.cards;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
@@ -192,12 +223,9 @@ export default function App() {
   });
 
   const [pickedIds, setPickedIds] = useState<string[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return [];
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return [];
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return [];
       const saved = localStorage.getItem(`picked_students_class_${activeId}`);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
@@ -205,13 +233,22 @@ export default function App() {
     }
   });
 
-  const [subjects, setSubjects] = useState<QuizSubject[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return [];
+  // State សម្រាប់សិស្សដែលគ្រូបានហៅផ្ទាល់ (Teacher manually called)
+  const [manualCalledIds, setManualCalledIds] = useState<string[]>(() => {
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return [];
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return [];
+      const saved = localStorage.getItem(`manual_called_students_class_${activeId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [subjects, setSubjects] = useState<QuizSubject[]>(() => {
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return [];
+    try {
       const saved = localStorage.getItem(`subjects_class_${activeId}`);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -224,12 +261,9 @@ export default function App() {
   });
 
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return null;
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return null;
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return null;
       return localStorage.getItem(`active_subject_id_${activeId}`);
     } catch {
       return null;
@@ -237,26 +271,31 @@ export default function App() {
   });
 
   const [chapters, setChapters] = useState<QuizChapter[]>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return [];
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return [];
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return [];
       const saved = localStorage.getItem(`chapters_class_${activeId}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      const savedSub = localStorage.getItem(`subjects_class_${activeId}`);
+      const savedSubId = localStorage.getItem(`active_subject_id_${activeId}`);
+      if (savedSub) {
+        const parsedSub = JSON.parse(savedSub) as QuizSubject[];
+        const targetSub = parsedSub.find(s => s.id === savedSubId) || parsedSub[0];
+        if (targetSub?.chapters) return targetSub.chapters;
+      }
+    } catch (e) {}
+    return [];
   });
 
   const [activeRoomId, setActiveRoomId] = useState<string | null>(() => {
-    const savedTeacherObj = localStorage.getItem('logged_in_teacher');
-    if (!savedTeacherObj) return null;
+    const { activeClassId: activeId } = getInitialActiveTeacherAndClass();
+    if (!activeId) return null;
     try {
-      const teacherObj = JSON.parse(savedTeacherObj);
-      const activeId = localStorage.getItem(`khmer_teacher_active_class_id_${teacherObj.id}`) || '';
-      if (!activeId) return null;
       return localStorage.getItem(`active_room_id_${activeId}`);
     } catch {
       return null;
@@ -627,14 +666,48 @@ export default function App() {
     }
 
     if (!teacher) {
-      setStudents([]);
-      setSubjects([]);
-      setActiveSubjectId(null);
-      setChapters([]);
-      setActiveRoomId(null);
-      setCards([]);
-      setPickedIds([]);
-      lastLoadedClassId.current = '';
+      if (activeClassId) {
+        const localSubStr = localStorage.getItem(`subjects_class_${activeClassId}`);
+        const localCardsStr = localStorage.getItem(`quiz_cards_class_${activeClassId}`);
+        const localStudentsStr = localStorage.getItem(`students_class_${activeClassId}`);
+        const localPickedStr = localStorage.getItem(`picked_students_class_${activeClassId}`);
+        const localSubjectId = localStorage.getItem(`active_subject_id_${activeClassId}`);
+        const localRoomId = localStorage.getItem(`active_room_id_${activeClassId}`);
+
+        let loadedSub: QuizSubject[] = [];
+        if (localSubStr) {
+          try { loadedSub = JSON.parse(localSubStr); } catch {}
+        }
+        if (loadedSub.length === 0) {
+          const mig = getMigratedSubjects([]);
+          loadedSub = mig.subjects;
+        }
+        setSubjects(loadedSub);
+        const subId = localSubjectId || loadedSub[0]?.id || null;
+        setActiveSubjectId(subId);
+        const activeSub = loadedSub.find(s => s.id === subId) || loadedSub[0];
+        const loadedChaps = activeSub?.chapters || [];
+        setChapters(loadedChaps);
+        const rmId = localRoomId || loadedChaps[0]?.rooms[0]?.id || null;
+        setActiveRoomId(rmId);
+
+        let loadedCards: QuizCard[] = [];
+        if (localCardsStr) {
+          try { loadedCards = JSON.parse(localCardsStr); } catch {}
+        }
+        if (loadedCards.length === 0 && loadedChaps[0]?.rooms[0]?.cards) {
+          loadedCards = loadedChaps[0].rooms[0].cards;
+        }
+        setCards(loadedCards);
+
+        if (localStudentsStr) {
+          try { setStudents(JSON.parse(localStudentsStr)); } catch {}
+        }
+        if (localPickedStr) {
+          try { setPickedIds(JSON.parse(localPickedStr)); } catch {}
+        }
+        lastLoadedClassId.current = activeClassId;
+      }
       return;
     }
 
@@ -749,8 +822,36 @@ export default function App() {
         setChapters(loadedChapters);
         setActiveRoomId(loadedActiveRoomId);
 
-        setCards(activeRoom?.cards || []);
+        // Resolve cards with class-specific local cache protection:
+        let resolvedCards: QuizCard[] = activeRoom?.cards || [];
+        if ((!resolvedCards || resolvedCards.length === 0) && classSnap.exists()) {
+          const classData = classSnap.data();
+          if (Array.isArray(classData.cards) && classData.cards.length > 0) {
+            resolvedCards = classData.cards;
+            if (activeRoom) activeRoom.cards = resolvedCards;
+          }
+        }
+        const localCardsStr = localStorage.getItem(`quiz_cards_class_${activeClassId}`);
+        if ((!resolvedCards || resolvedCards.length === 0) && localCardsStr) {
+          try {
+            const parsedLocals = JSON.parse(localCardsStr);
+            if (Array.isArray(parsedLocals) && parsedLocals.length > 0) {
+              resolvedCards = parsedLocals;
+              if (activeRoom) {
+                activeRoom.cards = resolvedCards;
+              }
+              // Sync back to cloud
+              safeSetDoc(classDocRef, {
+                subjects: loadedSubjects,
+                cards: resolvedCards
+              }, { merge: true }).catch(() => {});
+            }
+          } catch {}
+        }
+
+        setCards(resolvedCards);
         setPickedIds(activeRoom?.pickedIds || []);
+        lastLoadedClassId.current = activeClassId;
 
         // Immediately cache to localStorage so refresh and tab switches retain the exact cloud data
         localStorage.setItem(`subjects_class_${activeClassId}`, JSON.stringify(loadedSubjects));
@@ -761,7 +862,7 @@ export default function App() {
         if (loadedActiveRoomId) {
           localStorage.setItem(`active_room_id_${activeClassId}`, loadedActiveRoomId);
         }
-        localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(activeRoom?.cards || []));
+        localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(resolvedCards));
         localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(activeRoom?.pickedIds || []));
 
         if (classSnap.exists()) {
@@ -942,8 +1043,23 @@ export default function App() {
               setActiveRoomId(targetRoom.id);
               localStorage.setItem(`active_room_id_${activeClassId}`, targetRoom.id);
             }
-            setCards(targetRoom.cards || []);
-            localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(targetRoom.cards || []));
+            let roomCards = targetRoom.cards || [];
+            if (roomCards.length === 0 && Array.isArray(classData.cards) && classData.cards.length > 0) {
+              roomCards = classData.cards;
+            }
+            if (roomCards.length === 0) {
+              const localCardsStr = localStorage.getItem(`quiz_cards_class_${activeClassId}`);
+              if (localCardsStr) {
+                try {
+                  const parsedLocal = JSON.parse(localCardsStr);
+                  if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+                    roomCards = parsedLocal;
+                  }
+                } catch {}
+              }
+            }
+            setCards(roomCards);
+            localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(roomCards));
             setPickedIds(targetRoom.pickedIds || classData.pickedIds || []);
             localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(targetRoom.pickedIds || classData.pickedIds || []));
           }
@@ -1062,11 +1178,67 @@ export default function App() {
 
   // Helper to save class-level states to Firestore
   const saveClassMetadata = useCallback(async (updatedCards: QuizCard[], updatedPickedIds: string[]) => {
-    if (!activeRoomId || !activeSubjectId) return;
+    if (!activeClassId) return;
 
-    const updatedChapters = chapters.map(ch => {
+    // Immediately cache cards and picked IDs to localStorage for this specific class
+    localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(updatedCards));
+    localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(updatedPickedIds));
+
+    let currentSubjects = subjects;
+    let currentSubId = activeSubjectId;
+    if (!currentSubjects || currentSubjects.length === 0) {
+      const mig = getMigratedSubjects([]);
+      currentSubjects = mig.subjects;
+      currentSubId = mig.activeSubjectId;
+    }
+    if (!currentSubId) {
+      currentSubId = currentSubjects[0]?.id || 'subj-physics';
+    }
+
+    let currentSub = currentSubjects.find(s => s.id === currentSubId) || currentSubjects[0];
+    let currentChapters = currentSub?.chapters || [];
+    if (!currentChapters || currentChapters.length === 0) {
+      currentChapters = [{
+        id: `chapter-default-${Date.now()}`,
+        name: 'ជំពូកទី១',
+        rooms: [{
+          id: `room-default-${Date.now()}`,
+          name: 'មេរៀនទី១',
+          cards: updatedCards,
+          pickedIds: updatedPickedIds,
+          createdAt: Date.now()
+        }],
+        createdAt: Date.now()
+      }];
+    }
+
+    let currentRoomId = activeRoomId;
+    let foundRoom = false;
+    for (const ch of currentChapters) {
+      if (ch.rooms.some(r => r.id === currentRoomId)) {
+        foundRoom = true;
+        break;
+      }
+    }
+    if (!foundRoom || !currentRoomId) {
+      if (currentChapters[0]?.rooms?.length > 0) {
+        currentRoomId = currentChapters[0].rooms[0].id;
+      } else {
+        const newRoomId = `room-default-${Date.now()}`;
+        currentChapters[0].rooms = [{
+          id: newRoomId,
+          name: 'មេរៀនទី១',
+          cards: updatedCards,
+          pickedIds: updatedPickedIds,
+          createdAt: Date.now()
+        }];
+        currentRoomId = newRoomId;
+      }
+    }
+
+    const updatedChapters = currentChapters.map(ch => {
       const updatedRooms = ch.rooms.map(r => {
-        if (r.id === activeRoomId) {
+        if (r.id === currentRoomId) {
           return {
             ...r,
             cards: updatedCards,
@@ -1080,8 +1252,8 @@ export default function App() {
 
     setChapters(updatedChapters);
 
-    const updatedSubjects = subjects.map(sub => {
-      if (sub.id === activeSubjectId) {
+    const updatedSubjects = currentSubjects.map(sub => {
+      if (sub.id === currentSubId) {
         return {
           ...sub,
           chapters: updatedChapters
@@ -1091,30 +1263,31 @@ export default function App() {
     });
 
     setSubjects(updatedSubjects);
+    if (currentSubId !== activeSubjectId) setActiveSubjectId(currentSubId);
+    if (currentRoomId !== activeRoomId) setActiveRoomId(currentRoomId);
 
     lastSubjectsStrRef.current = JSON.stringify(updatedSubjects);
     lastPickedStrRef.current = JSON.stringify(updatedPickedIds);
+    activeRoomIdRef.current = currentRoomId;
+    activeSubjectIdRef.current = currentSubId;
+
+    localStorage.setItem(`subjects_class_${activeClassId}`, JSON.stringify(updatedSubjects));
+    localStorage.setItem(`chapters_class_${activeClassId}`, JSON.stringify(updatedChapters));
+    localStorage.setItem(`active_subject_id_${activeClassId}`, currentSubId);
+    localStorage.setItem(`active_room_id_${activeClassId}`, currentRoomId);
 
     const currentTeacherId = teacher?.id || 'local';
-    if (activeClassId) {
-      try {
-        await safeSetDoc(doc(db, 'teachers', currentTeacherId, 'classes', activeClassId), {
-          subjects: updatedSubjects,
-          chapters: updatedChapters, // backward compatibility
-          activeRoomId: activeRoomId,
-          activeSubjectId: activeSubjectId,
-          cards: updatedCards,
-          pickedIds: updatedPickedIds
-        }, { merge: true });
-      } catch (err) {
-        console.error('Failed to save class metadata to cloud:', err);
-      }
-    }
-    if (activeClassId) {
-      localStorage.setItem(`subjects_class_${activeClassId}`, JSON.stringify(updatedSubjects));
-      localStorage.setItem(`chapters_class_${activeClassId}`, JSON.stringify(updatedChapters)); // backward compatibility
-      localStorage.setItem(`active_subject_id_${activeClassId}`, activeSubjectId);
-      localStorage.setItem(`active_room_id_${activeClassId}`, activeRoomId);
+    try {
+      await safeSetDoc(doc(db, 'teachers', currentTeacherId, 'classes', activeClassId), {
+        subjects: updatedSubjects,
+        chapters: updatedChapters, // backward compatibility
+        activeRoomId: currentRoomId,
+        activeSubjectId: currentSubId,
+        cards: updatedCards,
+        pickedIds: updatedPickedIds
+      }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save class metadata to cloud:', err);
     }
   }, [teacher, activeClassId, activeRoomId, chapters, subjects, activeSubjectId]);
 
@@ -1176,6 +1349,113 @@ export default function App() {
     });
   }, [teacher, activeClassId, activeRoomId, activeSubjectId, chapters, subjects]);
 
+  // Helper to award date-based activity points (5 points) into monthlyScores and total score
+  const awardStudentActivityPoints = useCallback((studentId: string, points: number = 5) => {
+    let targetStudent: Student | null = null;
+    const currentTeacherId = teacher?.id || 'local';
+
+    setStudents(prev => {
+      const student = prev.find(s => s.id === studentId);
+      if (!student) return prev;
+
+      const { updatedStudent } = addActivityPointsToStudent(student, points);
+      targetStudent = updatedStudent;
+
+      const updatedList = prev.map(s => s.id === studentId ? updatedStudent : s);
+      if (activeClassId) {
+        localStorage.setItem(`students_class_${activeClassId}`, JSON.stringify(updatedList));
+      }
+      return updatedList;
+    });
+
+    if (targetStudent && activeClassId) {
+      safeSetDoc(
+        doc(db, 'teachers', currentTeacherId, 'classes', activeClassId, 'students', studentId),
+        targetStudent,
+        { merge: true }
+      ).catch(err => console.error("Cloud score sync error:", err));
+    }
+  }, [activeClassId, teacher]);
+
+  // Helper to set exact activity score directly for a student
+  const handleSetExactActivityScore = useCallback((studentId: string, exactScore: number) => {
+    let targetStudent: Student | null = null;
+    const currentTeacherId = teacher?.id || 'local';
+
+    setStudents(prev => {
+      const student = prev.find(s => s.id === studentId);
+      if (!student) return prev;
+
+      const { updatedStudent } = setActivityScoreForStudent(student, exactScore);
+      targetStudent = updatedStudent;
+
+      const updatedList = prev.map(s => s.id === studentId ? updatedStudent : s);
+      if (activeClassId) {
+        localStorage.setItem(`students_class_${activeClassId}`, JSON.stringify(updatedList));
+      }
+      return updatedList;
+    });
+
+    if (targetStudent && activeClassId) {
+      safeSetDoc(
+        doc(db, 'teachers', currentTeacherId, 'classes', activeClassId, 'students', studentId),
+        targetStudent,
+        { merge: true }
+      ).catch(err => console.error("Cloud score sync error:", err));
+    }
+  }, [activeClassId, teacher]);
+
+  // Helper to award group work points directly to students (adds to monthlyScores.groupWork)
+  const awardStudentGroupWorkPoints = useCallback((studentIds: string[], points: number) => {
+    const currentTeacherId = teacher?.id || 'local';
+    const updatedStudentsList: Student[] = [];
+
+    setStudents(prev => {
+      const updatedList = prev.map(s => {
+        if (studentIds.includes(s.id)) {
+          const { updatedStudent } = addGroupWorkPointsToStudent(s, points);
+          updatedStudentsList.push(updatedStudent);
+          return updatedStudent;
+        }
+        return s;
+      });
+
+      if (activeClassId) {
+        localStorage.setItem(`students_class_${activeClassId}`, JSON.stringify(updatedList));
+      }
+      return updatedList;
+    });
+
+    if (activeClassId && updatedStudentsList.length > 0) {
+      updatedStudentsList.forEach(st => {
+        safeSetDoc(
+          doc(db, 'teachers', currentTeacherId, 'classes', activeClassId, 'students', st.id),
+          st,
+          { merge: true }
+        ).catch(err => console.error("Cloud group score sync error:", err));
+      });
+    }
+  }, [activeClassId, teacher]);
+
+  // Handler for wheel selection: ONLY selects the student (points are only awarded upon answering questions correctly)
+  const handleWheelPickStudent = useCallback((chosenStudent: Student) => {
+    setSelectedStudentId(chosenStudent.id);
+  }, []);
+
+  // Helper to toggle manual called status by teacher ("គ្រូហៅផ្ទាល់")
+  const handleToggleManualCall = useCallback((studentId: string) => {
+    setManualCalledIds(prev => {
+      const isCurrentlyManual = prev.includes(studentId);
+      const next = isCurrentlyManual
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId];
+      if (activeClassId) {
+        localStorage.setItem(`manual_called_students_class_${activeClassId}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, [activeClassId]);
+
   const handleSelectRoom = useCallback((roomId: string) => {
     setActiveRoomId(roomId);
     let selectedRoom: QuizRoom | undefined;
@@ -1185,11 +1465,16 @@ export default function App() {
     }
 
     if (selectedRoom) {
-      setCards(selectedRoom.cards || []);
-      setPickedIds(selectedRoom.pickedIds || []);
-      if (!teacher && activeClassId) {
+      const roomCards = selectedRoom.cards || [];
+      const roomPicked = selectedRoom.pickedIds || [];
+      setCards(roomCards);
+      setPickedIds(roomPicked);
+      if (activeClassId) {
         localStorage.setItem(`active_room_id_${activeClassId}`, roomId);
-      } else if (teacher && activeClassId) {
+        localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(roomCards));
+        localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(roomPicked));
+      }
+      if (teacher && activeClassId) {
         safeSetDoc(doc(db, 'teachers', teacher.id, 'classes', activeClassId), {
           activeRoomId: roomId
         }, { merge: true }).catch(err => console.error('Failed to sync activeRoomId:', err));
@@ -1544,10 +1829,14 @@ export default function App() {
       if (sub.chapters.length > 0 && sub.chapters[0].rooms.length > 0) {
         const firstRoom = sub.chapters[0].rooms[0];
         setActiveRoomId(firstRoom.id);
-        setCards(firstRoom.cards || []);
-        setPickedIds(firstRoom.pickedIds || []);
+        const firstCards = firstRoom.cards || [];
+        const firstPicked = firstRoom.pickedIds || [];
+        setCards(firstCards);
+        setPickedIds(firstPicked);
         if (activeClassId) {
           localStorage.setItem(`active_room_id_${activeClassId}`, firstRoom.id);
+          localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(firstCards));
+          localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(firstPicked));
         }
         if (activeClassId) {
           safeSetDoc(doc(db, 'teachers', currentTeacherId, 'classes', activeClassId), {
@@ -1560,6 +1849,8 @@ export default function App() {
         setPickedIds([]);
         if (activeClassId) {
           localStorage.removeItem(`active_room_id_${activeClassId}`);
+          localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify([]));
+          localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify([]));
         }
         if (activeClassId) {
           safeSetDoc(doc(db, 'teachers', currentTeacherId, 'classes', activeClassId), {
@@ -1729,17 +2020,31 @@ export default function App() {
     if (classId === activeClassId) return;
 
     // Save CURRENT class data to its own key BEFORE switching!
-    if (activeClassId && lastLoadedClassId.current === activeClassId) {
+    if (activeClassId) {
       const currentCls = classes.find(c => c.id === activeClassId);
       const validCurrentStudents = students.filter(s => isStudentInClass(s, activeClassId, currentCls?.name));
       localStorage.setItem(`students_class_${activeClassId}`, JSON.stringify(validCurrentStudents));
       localStorage.setItem(`picked_students_class_${activeClassId}`, JSON.stringify(pickedIds));
+      localStorage.setItem(`manual_called_students_class_${activeClassId}`, JSON.stringify(manualCalledIds));
       localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(cards));
-      if (subjects.length > 0) {
-        localStorage.setItem(`subjects_class_${activeClassId}`, JSON.stringify(subjects));
+
+      let updatedChapters = chapters;
+      if (activeRoomId && chapters.length > 0) {
+        updatedChapters = chapters.map(ch => ({
+          ...ch,
+          rooms: ch.rooms.map(r => r.id === activeRoomId ? { ...r, cards: cards, pickedIds: pickedIds } : r)
+        }));
       }
-      if (chapters.length > 0) {
-        localStorage.setItem(`chapters_class_${activeClassId}`, JSON.stringify(chapters));
+      let updatedSubjects = subjects;
+      if (activeSubjectId && updatedSubjects.length > 0) {
+        updatedSubjects = updatedSubjects.map(sub => sub.id === activeSubjectId ? { ...sub, chapters: updatedChapters } : sub);
+      }
+
+      if (updatedSubjects.length > 0) {
+        localStorage.setItem(`subjects_class_${activeClassId}`, JSON.stringify(updatedSubjects));
+      }
+      if (updatedChapters.length > 0) {
+        localStorage.setItem(`chapters_class_${activeClassId}`, JSON.stringify(updatedChapters));
       }
       if (activeSubjectId) {
         localStorage.setItem(`active_subject_id_${activeClassId}`, activeSubjectId);
@@ -1783,6 +2088,17 @@ export default function App() {
       }
     } else {
       setPickedIds([]);
+    }
+
+    const cachedManualCalledStr = localStorage.getItem(`manual_called_students_class_${classId}`);
+    if (cachedManualCalledStr) {
+      try {
+        setManualCalledIds(JSON.parse(cachedManualCalledStr));
+      } catch {
+        setManualCalledIds([]);
+      }
+    } else {
+      setManualCalledIds([]);
     }
 
     // Immediately load target class's cached subjects, chapters, and questions
@@ -2255,7 +2571,11 @@ export default function App() {
             console.error(err);
           }
         })();
-        return prev.map(s => s.id === id ? { ...s, ...fields } : s);
+        const updatedList = prev.map(s => s.id === id ? { ...s, ...fields } : s);
+        if (activeClassId) {
+          localStorage.setItem(`students_class_${activeClassId}`, JSON.stringify(updatedList));
+        }
+        return updatedList;
       }
     });
   }, [activeClassId, teacher]);
@@ -2317,6 +2637,7 @@ export default function App() {
   }, [students, teacher, activeClassId, confirmAction]);
 
   const handleQuestionsGenerated = useCallback((questions: Question[]) => {
+    if (!questions || questions.length === 0) return;
     const newCards: QuizCard[] = questions.map((q, i) => ({
       id: `c-${i}-${Date.now()}`,
       number: i + 1,
@@ -2325,28 +2646,29 @@ export default function App() {
       status: 'idle'
     }));
     setCards(newCards);
+    if (activeClassId) {
+      localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(newCards));
+    }
     saveClassMetadata(newCards, pickedIds);
-  }, [pickedIds, saveClassMetadata]);
+  }, [activeClassId, pickedIds, saveClassMetadata]);
 
   const handleUpdateCards = useCallback((updatedCards: QuizCard[]) => {
     setCards(updatedCards);
+    if (activeClassId) {
+      localStorage.setItem(`quiz_cards_class_${activeClassId}`, JSON.stringify(updatedCards));
+    }
     saveClassMetadata(updatedCards, pickedIds);
-  }, [pickedIds, saveClassMetadata]);
+  }, [activeClassId, pickedIds, saveClassMetadata]);
 
   const handleAnswer = useCallback((correct: boolean) => {
     if (!activeCardId) return;
 
     // Update student score if student is selected
     if (selectedStudentId) {
-      let targetScore = 0;
-      setStudents(prev => prev.map(s => {
-        if (s.id === selectedStudentId) {
-          targetScore = s.score + (correct ? 3 : 0);
-          saveStudentScore(selectedStudentId, targetScore);
-          return { ...s, score: targetScore };
-        }
-        return s;
-      }));
+      // If correct answer, award 5 points into date-based activity scores system (សកម្មភាព column)
+      if (correct) {
+        awardStudentActivityPoints(selectedStudentId, 5);
+      }
 
       // Add student to picked list so they are not picked again
       const updatedPickedIds = pickedIds.includes(selectedStudentId)
@@ -2443,7 +2765,7 @@ export default function App() {
     const keysToClear = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('students_class_') || key.startsWith('quiz_cards_class_') || key.startsWith('picked_students_class_'))) {
+      if (key && (key.startsWith('students_class_') || key.startsWith('quiz_cards_class_') || key.startsWith('picked_students_class_') || key.startsWith('manual_called_students_class_'))) {
         keysToClear.push(key);
       }
     }
@@ -2456,6 +2778,7 @@ export default function App() {
     setStudents([]);
     setCards([]);
     setPickedIds([]);
+    setManualCalledIds([]);
     setSelectedStudentId(null);
     setActiveCardId(null);
   };
@@ -2471,6 +2794,11 @@ export default function App() {
     const studentIds = new Set(currentClassStudents.map(s => s.id));
     return pickedIds.filter(id => studentIds.has(id));
   }, [pickedIds, currentClassStudents]);
+
+  const currentClassManualCalledIds = React.useMemo(() => {
+    const studentIds = new Set(currentClassStudents.map(s => s.id));
+    return manualCalledIds.filter(id => studentIds.has(id));
+  }, [manualCalledIds, currentClassStudents]);
 
   const selectedStudent = currentClassStudents.find(s => s.id === selectedStudentId) || null;
   const activeCard = cards.find(c => c.id === activeCardId) || null;
@@ -2985,12 +3313,23 @@ export default function App() {
             isDarkMode ? 'bg-slate-800/60 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-xs'
           }`}>
             <Compass className="w-3.5 h-3.5 text-amber-500" />
-            <span>បានហៅ៖ <strong className="text-amber-600 dark:text-amber-400">{currentClassPickedIds.length}</strong>/{currentClassStudents.length}</span>
+            <span>បានហៅ៖ <strong className="text-amber-600 dark:text-amber-400">{currentClassPickedIds.length + currentClassManualCalledIds.filter(id => !currentClassPickedIds.includes(id)).length}</strong>/{currentClassStudents.length}</span>
+            {currentClassManualCalledIds.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 rounded font-black">
+                គ្រូហៅ {currentClassManualCalledIds.length}
+              </span>
+            )}
           </div>
 
-          {currentClassPickedIds.length > 0 && (
+          {(currentClassPickedIds.length > 0 || currentClassManualCalledIds.length > 0) && (
             <button
-              onClick={() => handleSetPickedIds([])}
+              onClick={() => {
+                handleSetPickedIds([]);
+                setManualCalledIds([]);
+                if (activeClassId) {
+                  localStorage.removeItem(`manual_called_students_class_${activeClassId}`);
+                }
+              }}
               className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
               title="លាងសម្អាតការហៅឈ្មោះឡើងវិញ"
             >
@@ -3008,14 +3347,20 @@ export default function App() {
               <SpinningWheel
                 students={currentClassStudents}
                 pickedIds={currentClassPickedIds}
+                manualCalledIds={currentClassManualCalledIds}
                 onSetPickedIds={handleSetPickedIds}
+                onToggleManualCall={handleToggleManualCall}
                 onSelectStudent={(s) => setSelectedStudentId(s.id)}
+                onWheelPickStudent={handleWheelPickStudent}
+                onAwardActivityPoints={awardStudentActivityPoints}
+                onSetExactActivityScore={handleSetExactActivityScore}
                 selectedStudent={selectedStudent}
                 onAddStudent={addStudent}
                 onBulkAddStudents={handleBulkAddStudents}
                 showBulkInput={showWheelBulk}
                 setShowBulkInput={setShowWheelBulk}
                 isDarkMode={isDarkMode}
+                className={activeClass?.name || 'ថ្នាក់រៀន'}
               />
             </section>
             
@@ -3023,7 +3368,11 @@ export default function App() {
               <StudentPanel
                 students={currentClassStudents}
                 pickedIds={currentClassPickedIds}
+                manualCalledIds={currentClassManualCalledIds}
                 onSetPickedIds={handleSetPickedIds}
+                onToggleManualCall={handleToggleManualCall}
+                onAwardActivityPoints={awardStudentActivityPoints}
+                onSetExactActivityScore={handleSetExactActivityScore}
                 onAddStudent={addStudent}
                 onRemoveStudent={removeStudent}
                 onClearStudents={clearStudents}
@@ -3086,14 +3435,20 @@ export default function App() {
                   <SpinningWheel
                     students={currentClassStudents}
                     pickedIds={currentClassPickedIds}
+                    manualCalledIds={currentClassManualCalledIds}
                     onSetPickedIds={handleSetPickedIds}
+                    onToggleManualCall={handleToggleManualCall}
                     onSelectStudent={(s) => setSelectedStudentId(s.id)}
+                    onWheelPickStudent={handleWheelPickStudent}
+                    onAwardActivityPoints={awardStudentActivityPoints}
+                    onSetExactActivityScore={handleSetExactActivityScore}
                     selectedStudent={selectedStudent}
                     onAddStudent={addStudent}
                     onBulkAddStudents={handleBulkAddStudents}
                     showBulkInput={showWheelBulk}
                     setShowBulkInput={setShowWheelBulk}
                     isDarkMode={isDarkMode}
+                    className={activeClass?.name || 'ថ្នាក់រៀន'}
                   />
                 </div>
               ) : (
@@ -3101,7 +3456,11 @@ export default function App() {
                   <StudentPanel
                     students={currentClassStudents}
                     pickedIds={currentClassPickedIds}
+                    manualCalledIds={currentClassManualCalledIds}
                     onSetPickedIds={handleSetPickedIds}
+                    onToggleManualCall={handleToggleManualCall}
+                    onAwardActivityPoints={awardStudentActivityPoints}
+                    onSetExactActivityScore={handleSetExactActivityScore}
                     onAddStudent={addStudent}
                     onRemoveStudent={removeStudent}
                     onClearStudents={clearStudents}
@@ -3158,9 +3517,12 @@ export default function App() {
               activeClassName={activeClass?.name || 'ថ្នាក់រៀន'}
               activeClassId={activeClassId || ''}
               teacher={teacher}
+              classes={classes}
               isDarkMode={isDarkMode}
               onBatchSyncStudents={handleBatchSyncStudents}
               onNavigateTab={(tab) => setActiveTab(tab as any)}
+              onAwardGroupWorkPoints={awardStudentGroupWorkPoints}
+              onUpdateStudentDetail={updateStudentDetail}
             />
           </div>
         )}

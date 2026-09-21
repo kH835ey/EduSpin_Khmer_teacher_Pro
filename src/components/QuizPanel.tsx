@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { HelpCircle, Timer, CheckCircle, XCircle, Info, Trophy, AlertCircle, RotateCcw, BookOpen, Plus, Trash2, Layers, Folder, Edit3, Check, X, ChevronDown, Printer, Download, Sparkles, Settings, Eye, Pencil, Link as LinkIcon, Volume2, VolumeX } from 'lucide-react';
+import { HelpCircle, Timer, CheckCircle, XCircle, Info, Trophy, AlertCircle, RotateCcw, BookOpen, Plus, Trash2, Layers, Folder, Edit3, Check, X, ChevronDown, Printer, Download, Sparkles, Settings, Eye, Pencil, Link as LinkIcon, Volume2, VolumeX, ArrowRight } from 'lucide-react';
 import { formatGoogleDriveImageUrl, DEFAULT_GOOGLE_DRIVE_LOGO_LINK } from '../lib/driveUtils';
 import { removeWhiteBackgroundFromDataUrl } from '../lib/imageUtils';
 import confetti from 'canvas-confetti';
@@ -122,6 +122,7 @@ export default function QuizPanel({
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [correctIndex, setCorrectIndex] = useState<number>(0);
   const [showResult, setShowResult] = useState<'correct' | 'wrong' | null>(null);
+  const [showCorrectFullScreenPopup, setShowCorrectFullScreenPopup] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const playTickSynth = () => {
@@ -2027,6 +2028,7 @@ export default function QuizPanel({
       
       setTimeLeft(25);
       setShowResult(null);
+      setShowCorrectFullScreenPopup(false);
     }
   }, [activeCard]);
 
@@ -2038,12 +2040,27 @@ export default function QuizPanel({
 
     if (isCorrect) {
       playCorrectSynth();
+      setShowCorrectFullScreenPopup(true);
       confetti({
-        particleCount: 160,
-        spread: 80,
-        origin: { y: 0.55 },
-        colors: ['#4F46E5', '#10B981', '#F59E0B', '#EC4899']
+        particleCount: 220,
+        spread: 90,
+        origin: { y: 0.5 },
+        colors: ['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#06B6D4']
       });
+      setTimeout(() => {
+        confetti({
+          particleCount: 140,
+          angle: 60,
+          spread: 75,
+          origin: { x: 0, y: 0.6 }
+        });
+        confetti({
+          particleCount: 140,
+          angle: 120,
+          spread: 75,
+          origin: { x: 1, y: 0.6 }
+        });
+      }, 300);
     } else {
       playWrongSynth();
     }
@@ -2051,11 +2068,13 @@ export default function QuizPanel({
 
   const handleContinue = () => {
     if (showResult !== null) {
+      setShowCorrectFullScreenPopup(false);
       onAnswer(showResult === 'correct');
     }
   };
 
   const handleCloseModal = () => {
+    setShowCorrectFullScreenPopup(false);
     if (onCloseActiveCard) {
       onCloseActiveCard();
     } else {
@@ -2070,7 +2089,17 @@ export default function QuizPanel({
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
 
       if (e.key === 'Escape') {
-        handleCloseModal();
+        if (showCorrectFullScreenPopup) {
+          setShowCorrectFullScreenPopup(false);
+        } else {
+          handleCloseModal();
+        }
+      } else if (showCorrectFullScreenPopup) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setShowCorrectFullScreenPopup(false);
+          handleContinue();
+        }
       } else if (showResult !== null) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -4292,7 +4321,7 @@ export default function QuizPanel({
                         <XCircle className="w-9 h-9 text-red-400 shrink-0" />
                       )}
                       <h4 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">
-                        {showResult === 'correct' ? '🎉 អស្ចារ្យណាស់! ចម្លើយត្រឹមត្រូវ (+៣ ពិន្ទុ)' : '❌ គួរឲ្យសោកស្ដាយ! មិនទាន់ត្រឹមត្រូវទេ'}
+                        {showResult === 'correct' ? '🎉 អស្ចារ្យណាស់! ចម្លើយត្រឹមត្រូវ (+៥ ពិន្ទុ)' : '❌ គួរឲ្យសោកស្ដាយ! មិនទាន់ត្រឹមត្រូវទេ'}
                       </h4>
                     </div>
 
@@ -4360,6 +4389,113 @@ export default function QuizPanel({
               <span>ចុច <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-[11px] font-mono text-white">Esc</kbd> ដើម្បីចាកចេញ</span>
             </div>
           </div>
+
+          {/* Fullscreen Correct Answer Celebration Modal */}
+          <AnimatePresence>
+            {showCorrectFullScreenPopup && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[10000] overflow-y-auto bg-slate-950/98 backdrop-blur-2xl p-3 sm:p-6 md:p-8 flex flex-col justify-start sm:justify-center items-center"
+              >
+                <motion.div
+                  initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                  className="relative my-auto w-full max-w-3xl bg-linear-to-b from-slate-900 via-slate-900 to-emerald-950/95 border-2 sm:border-3 border-emerald-400/80 rounded-3xl p-5 sm:p-8 text-center shadow-[0_0_80px_rgba(16,185,129,0.35)]"
+                >
+                  {/* Decorative glowing backdrops */}
+                  <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
+
+                  {/* Top celebration icon */}
+                  <motion.div
+                    animate={{ rotate: [0, 6, -6, 0], scale: [1, 1.05, 1] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 p-1 shadow-xl shadow-emerald-500/40 mx-auto mb-4 flex items-center justify-center ring-4 ring-emerald-400/40"
+                  >
+                    <Trophy className="w-9 h-9 sm:w-12 sm:h-12 text-yellow-300 fill-yellow-300 drop-shadow-md" />
+                  </motion.div>
+
+                  {/* Heading 1: អក្សរធំៗ ចម្លើយរបស់អ្នកត្រឹមត្រូវ */}
+                  <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-tight drop-shadow-[0_4px_20px_rgba(16,185,129,0.5)] leading-snug">
+                    ចម្លើយរបស់អ្នកត្រឹមត្រូវ
+                  </h1>
+
+                  {/* Heading 2: អបអរសាទរអ្នកទទួលបាន 5 ពិន្ទុ */}
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 sm:gap-2.5 px-5 sm:px-7 py-2 sm:py-2.5 rounded-full bg-emerald-500/20 border border-emerald-400/80 shadow-lg shadow-emerald-500/20">
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
+                    <span className="text-lg sm:text-2xl font-black text-white tracking-wide">
+                      អបអរសាទរអ្នកទទួលបាន 5 ពិន្ទុ
+                    </span>
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 shrink-0" />
+                  </div>
+
+                  {/* Selected Student information if present */}
+                  {selectedStudent && (
+                    <div className="mt-4 inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md">
+                      {selectedStudent.avatarUrl ? (
+                        <img
+                          src={selectedStudent.avatarUrl}
+                          alt={selectedStudent.name}
+                          className="w-9 h-9 rounded-xl object-cover ring-2 ring-emerald-400"
+                        />
+                      ) : (
+                        <span className="text-xl">{selectedStudent.emoji || '🧑‍🎓'}</span>
+                      )}
+                      <div className="text-left">
+                        <div className="text-[11px] text-slate-300 font-bold">សិស្សឡើងឆ្លើយ៖</div>
+                        <div className="text-sm sm:text-base font-black text-white">{selectedStudent.name}</div>
+                      </div>
+                      <span className="ml-1.5 px-2.5 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-black text-xs shadow-xs">
+                        +5 ពិន្ទុ (សកម្មភាព)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Correct answer preview box */}
+                  <div className="mt-4 max-w-2xl mx-auto px-4 py-3 rounded-xl bg-slate-950/80 border border-emerald-500/40 text-left">
+                    <div className="text-xs font-black uppercase text-emerald-400 tracking-wider mb-1 flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>ចម្លើយត្រឹមត្រូវ (ជម្រើស {String.fromCharCode(65 + correctIndex)})៖</span>
+                    </div>
+                    <div className="text-sm sm:text-lg font-bold text-white leading-relaxed break-words">
+                      <FormulaRenderer text={shuffledOptions[correctIndex] || ''} />
+                    </div>
+                    {activeCard?.question?.explanation && (
+                      <div className="mt-2 pt-2 border-t border-white/10 text-xs sm:text-sm text-slate-300 font-medium">
+                        <span className="text-emerald-300 font-bold">💡 ការពន្យល់៖</span> {activeCard.question.explanation}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons: Continue / Review */}
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCorrectFullScreenPopup(false);
+                        handleContinue();
+                      }}
+                      className="w-full sm:w-auto px-7 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base sm:text-xl shadow-xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                    >
+                      <span>យល់ព្រម / បន្តបន្ទាប់ (Enter)</span>
+                      <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCorrectFullScreenPopup(false)}
+                      className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer"
+                    >
+                      ពិនិត្យផ្ទាំងសំណួរឡើងវិញ
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </AnimatePresence>,
       document.body

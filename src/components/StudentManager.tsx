@@ -712,7 +712,7 @@ export default function StudentManager({
                     : 'text-blue-600 font-extrabold tracking-wide' 
                   : 'font-bold text-slate-600 dark:text-slate-400'
               }>
-                ពិន្ទុសិស្ស
+                បញ្ចូលពិន្ទុ & តារាងពិន្ទុ
               </span>
               {totalScoresSum > 0 && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-black transition-colors ${
